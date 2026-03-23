@@ -1,0 +1,67 @@
+{
+  "name": "ProposalView",
+  "type": "object",
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "description": "ID da proposta"
+    },
+    "proposal_slug": {
+      "type": "string",
+      "description": "Slug da proposta"
+    },
+    "viewed_at": {
+      "type": "string",
+      "description": "Data/hora do acesso"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "ID de sess\u00e3o \u00fanico"
+    },
+    "hero_video_watched": {
+      "type": "boolean",
+      "default": false
+    },
+    "backstage_video_watched": {
+      "type": "boolean",
+      "default": false
+    },
+    "click_positions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "section": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Posi\u00e7\u00f5es de clique na p\u00e1gina"
+    },
+    "package_expansions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs dos pacotes expandidos pelo visitante"
+    },
+    "read_time_seconds": {
+      "type": "number",
+      "description": "Tempo total de leitura em segundos"
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "User agent do navegador para detectar SO"
+    }
+  },
+  "required": [
+    "proposal_id",
+    "proposal_slug"
+  ]
+}

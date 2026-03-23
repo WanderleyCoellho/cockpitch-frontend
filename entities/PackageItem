@@ -1,0 +1,22 @@
+{
+  "name": "PackageItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do item"
+    },
+    "is_courtesy": {
+      "type": "boolean",
+      "default": false,
+      "description": "Item de cortesia"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

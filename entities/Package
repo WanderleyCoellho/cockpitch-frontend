@@ -1,0 +1,59 @@
+{
+  "name": "Package",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do pacote"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do pacote"
+    },
+    "price": {
+      "type": "string",
+      "description": "Valor/pre\u00e7o"
+    },
+    "cta_text": {
+      "type": "string",
+      "default": "Quero este pacote",
+      "description": "Texto do bot\u00e3o CTA"
+    },
+    "is_highlighted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Destaque do card"
+    },
+    "highlight_label": {
+      "type": "string",
+      "description": "Label do destaque (ex: Mais popular)"
+    },
+    "highlight_color": {
+      "type": "string",
+      "default": "#E8C97A",
+      "description": "Cor do destaque"
+    },
+    "item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs dos itens do pacote (ordenados)"
+    },
+    "courtesy_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs dos itens marcados como cortesia neste pacote"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ]
+}

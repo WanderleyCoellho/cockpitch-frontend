@@ -1,0 +1,211 @@
+{
+  "name": "Provider",
+  "type": "object",
+  "properties": {
+    "photo_url": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do est\u00fadio/prestador"
+    },
+    "about_title": {
+      "type": "string"
+    },
+    "about_subtitle": {
+      "type": "string"
+    },
+    "about_text": {
+      "type": "string",
+      "description": "Rich text HTML"
+    },
+    "about_portfolio_media": {
+      "type": "array",
+      "description": "M\u00eddia de portf\u00f3lio (9:16) para se\u00e7\u00e3o Sobre n\u00f3s",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          }
+        }
+      }
+    },
+    "style_text": {
+      "type": "string"
+    },
+    "chips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "short_description": {
+      "type": "string"
+    },
+    "hero_video_url": {
+      "type": "string",
+      "description": "URL do v\u00eddeo hero (upload de arquivo)"
+    },
+    "hero_show_name": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exibir nome do cliente na abertura"
+    },
+    "hero_show_date": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exibir data do evento na abertura"
+    },
+    "hero_opening_behavior": {
+      "type": "string",
+      "enum": [
+        "name_first",
+        "video_first"
+      ],
+      "default": "video_first",
+      "description": "Op\u00e7\u00e3o 1: nome+data primeiro, depois v\u00eddeo. Op\u00e7\u00e3o 2: v\u00eddeo direto."
+    },
+    "backstage_video_url": {
+      "type": "string"
+    },
+    "backstage_photos": {
+      "type": "array",
+      "description": "Fotos de backstage",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "backstage_videos": {
+      "type": "array",
+      "description": "V\u00eddeos de backstage",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "differentials_title": {
+      "type": "string"
+    },
+    "differentials_text": {
+      "type": "string"
+    },
+    "differentials_media": {
+      "type": "array",
+      "description": "Fotos e v\u00eddeos de diferenciais",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          }
+        }
+      }
+    },
+    "testimonials": {
+      "type": "array",
+      "description": "Lista de depoimentos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quote": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "venue": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "ref_photo_url": {
+            "type": "string"
+          },
+          "ref_video_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "delivery_times": {
+      "type": "string"
+    },
+    "closing_phrase": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "privacy_url": {
+      "type": "string"
+    },
+    "terms_url": {
+      "type": "string"
+    },
+    "partners": {
+      "type": "array",
+      "description": "Parceiros e fornecedores",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": []
+}
