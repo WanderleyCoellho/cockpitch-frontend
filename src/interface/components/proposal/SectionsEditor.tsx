@@ -31,11 +31,17 @@ export function normalizeSections(saved?: ProposalSection[] | null): ProposalSec
 interface Props {
     sections: ProposalSection[]
     onChange: (sections: ProposalSection[]) => void
+    sectionsConfig: Record<string, any> | null | undefined
 }
 
-export default function SectionsEditor({ sections, onChange }: Props) {
+export default function SectionsEditor({ sections, onChange, sectionsConfig }: Props) {
     const [dragging, setDragging] = useState<number | null>(null)
     const [over, setOver] = useState<number | null>(null)
+
+    const handleLabelChange = (id: string, newLabel: string) => {
+        const newSections = sections.map((s) => s.id === id ? { ...s, label: newLabel } : s)
+        onChange(newSections)
+    }
 
     const toggle = (id: string) => {
         const sec = sections.find((s) => s.id === id)
@@ -74,6 +80,8 @@ export default function SectionsEditor({ sections, onChange }: Props) {
                 const Icon = meta?.icon ?? GripVertical
                 const isDragging = dragging === idx
                 const isOver = over === idx
+                const label = sectionsConfig?.[section.id]?.label || section.label
+
                 return (
                     <div
                         key={section.id}
@@ -115,9 +123,12 @@ export default function SectionsEditor({ sections, onChange }: Props) {
                         {/* Label + description */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                                <span className={`text-sm font-medium ${section.enabled ? 'text-white/85' : 'text-white/30'}`}>
-                                    {section.label}
-                                </span>
+                                <input
+                                    type="text"
+                                    value={label}
+                                    onChange={(e) => handleLabelChange(section.id, e.target.value)}
+                                    className={`text-sm font-medium bg-transparent border-none focus:outline-none w-full ${section.enabled ? 'text-white/85' : 'text-white/30'}`}
+                                />
                                 {section.pinned && (
                                     <span className="text-[10px] text-[#C9A84C]/60 font-medium tracking-wide">sempre ativa</span>
                                 )}

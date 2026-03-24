@@ -212,6 +212,24 @@ export default function ProviderForm({ provider, onClose }) {
                     </section>
 
                     <section className="space-y-4">
+                        <p className="text-[10px] font-semibold tracking-widest uppercase text-[#C9A84C]">Redes Sociais</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelClass}>Facebook</label>
+                                <input type="text" placeholder="URL do seu perfil no Facebook" className={fieldClass} {...register('contactInfo.facebook')} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Twitter</label>
+                                <input type="text" placeholder="URL do seu perfil no Twitter" className={fieldClass} {...register('contactInfo.twitter')} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className={labelClass}>LinkedIn</label>
+                            <input type="text" placeholder="URL do seu perfil no LinkedIn" className={fieldClass} {...register('contactInfo.linkedin')} />
+                        </div>
+                    </section>
+
+                    <section className="space-y-4">
                         <p className="text-[10px] font-semibold tracking-widest uppercase text-[#C9A84C]">Sobre o Estúdio</p>
                         <div>
                             <label className={labelClass}>Descrição Curta</label>

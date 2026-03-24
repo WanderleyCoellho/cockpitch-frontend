@@ -308,9 +308,6 @@ function AboutSection({ provider, tk }: { provider?: Provider; tk: ThemeTokens }
     return (
         <section id="about" data-section="about" className="px-6 py-24 md:py-32" style={{ background: 'var(--pp-card-bg)' }}>
             <div className="max-w-2xl mx-auto">
-                <p className="pp-body text-xs tracking-widest uppercase mb-4 font-medium text-center" style={{ color: 'var(--pp-accent)' }}>
-                    Sobre nós
-                </p>
                 {provider?.aboutTitle && (
                     <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-3 text-center" style={{ color: 'var(--pp-text)' }}>
                         {provider.aboutTitle}
@@ -566,9 +563,9 @@ function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: 
                             >
                                 {/* Media Background */}
                                 {hasMedia && pkg.mediaType === 'video' ? (
-                                    <video src={pkg.mediaUrl} autoPlay loop muted className="absolute inset-0 w-full h-full object-cover" />
+                                    <video src={pkg.mediaUrl} autoPlay loop muted className="absolute inset-0 w-full h-full object-contain" />
                                 ) : hasMedia && pkg.mediaType === 'image' ? (
-                                    <img src={pkg.mediaUrl} alt={pkg.name} className="absolute inset-0 w-full h-full object-cover" />
+                                    <img src={pkg.mediaUrl} alt={pkg.name} className="absolute inset-0 w-full h-full object-contain" />
                                 ) : null}
 
                                 {/* Overlay */}
@@ -743,7 +740,7 @@ function ContactSection({ proposal, provider, tk }: { proposal: Proposal; provid
 
                 <div className="text-center pt-8 border-t" style={{ borderColor: 'var(--pp-border)' }}>
                     <p className="pp-body text-xs" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
-                        Proposta gerada com Cockpitch
+                        Proposta gerada com LumenDev Pitch
                     </p>
                 </div>
             </div>

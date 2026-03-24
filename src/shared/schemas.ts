@@ -23,6 +23,11 @@ export const ProviderSchema = z.object({
     aboutText: z.string().optional(),
     shortDescription: z.string().optional(),
     packageLabel: z.string().optional(),
+    contactInfo: z.object({
+        facebook: z.string().optional(),
+        twitter: z.string().optional(),
+        linkedin: z.string().optional(),
+    }).optional(),
 })
 
 export const LoginSchema = z.object({
@@ -67,6 +72,8 @@ export const ProposalSchema = z.object({
     theme: z.string().optional(),
     themeCustom: z.record(z.string(), z.any()).nullable().optional(),
     sections: z.array(z.any()).nullable().optional(),
+    videoSoundEnabled: z.boolean().optional(),
+    sectionsConfig: z.record(z.string(), z.any()).nullable().optional(),
 })
 
 export type ProviderFormData = z.infer<typeof ProviderSchema>

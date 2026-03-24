@@ -143,6 +143,7 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
                             </div>
                             <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
                         </label>
+                        <p className="text-[11px] text-white/30 mt-1 text-center">Para melhor resultado, use imagens no formato 16:9, por exemplo, 1920x1080 pixels.</p>
                         {mediaUrl && (
                             <div className="mt-3 rounded-xl border border-white/10 bg-white/3 p-3">
                                 {mediaPreviewFailed ? (

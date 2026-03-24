@@ -5,10 +5,11 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { ProposalSchema, type ProposalFormData } from '../../shared/schemas'
 import { slugify } from '../../shared/utils'
-import type { Proposal, Package, ProposalMediaItem, ProposalSection, ThemeCustom } from '../../shared/types'
+import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ThemeCustom } from '../../shared/types'
 import ThemeSelector from './proposal/ThemeSelector'
 import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
-import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check } from 'lucide-react'
+import ContentEditor from './proposal/ContentEditor'
+import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check, Pencil } from 'lucide-react'
 
 type ProposalFormProps = {
     proposal?: Proposal | null
@@ -17,7 +18,7 @@ type ProposalFormProps = {
     onSuccess?: () => void
 }
 
-type Tab = 'info' | 'packages' | 'media' | 'visual'
+type Tab = 'info' | 'packages' | 'media' | 'visual' | 'content'
 
 function isLikelyVideoUrl(url: string): boolean {
     return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
@@ -57,7 +58,15 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
     const [sections, setSections] = useState<ProposalSection[]>(
         normalizeSections(proposal?.sections ?? undefined)
     )
+    const [sectionsConfig, setSectionsConfig] = useState<Record<string, any>>(
+        proposal?.sectionsConfig ?? {}
+    );
     const [confirmDelete, setConfirmDelete] = useState(false)
+
+    const { data: provider } = useQuery<Provider | null>({
+        queryKey: ['provider', providerId],
+        queryFn: () => httpGateway.getProvider(providerId),
+    });
 
     const {
         register,
@@ -78,6 +87,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 weddingPhotoUrl: proposal.weddingPhotoUrl,
                 backstageMedia: proposal.backstageMedia ?? [],
                 differentialsMedia: proposal.differentialsMedia ?? [],
+                sectionsConfig: proposal.sectionsConfig,
             }
             : { validityDays: 30, packageIds: [] },
     })
@@ -109,6 +119,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 theme,
                 themeCustom: Object.keys(themeCustom).length ? themeCustom : null,
                 sections,
+                sectionsConfig,
             }),
         onSuccess: () => {
             onSuccess?.()
@@ -125,6 +136,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 theme,
                 themeCustom: Object.keys(themeCustom).length ? themeCustom : null,
                 sections,
+                sectionsConfig,
             }),
         onSuccess: () => {
             onSuccess?.()
@@ -202,6 +214,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         { id: 'info' as Tab, label: 'Informações', Icon: Info },
         { id: 'packages' as Tab, label: 'Pacotes', Icon: PackageIcon },
         { id: 'media' as Tab, label: 'Mídias', Icon: Layers },
+        { id: 'content' as Tab, label: 'Conteúdo', Icon: Pencil },
         { id: 'visual' as Tab, label: 'Visual', Icon: Palette },
     ]
 
@@ -249,6 +262,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
                     <input type="hidden" {...register('heroVideoUrl')} />
                     <input type="hidden" {...register('weddingPhotoUrl')} />
+                    <input type="hidden" {...register('sectionsConfig')} />
 
                     {/* ── TAB: INFORMAÇÕES ── */}
                     {tab === 'info' && (
@@ -431,22 +445,27 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                     <input type="file" accept="video/*" className="hidden" onChange={(e) => handleFileChange(e, 'heroVideo')} disabled={uploadingType !== null} />
                                 </label>
                                 {heroVideoUrl && (
-                                    <div className="mt-3 rounded-xl border border-white/10 bg-white/3 p-3">
-                                        <video src={heroVideoUrl} controls preload="metadata" className="w-full rounded-lg bg-black" />
-                                        <div className="mt-3 flex items-center justify-between gap-3">
-                                            <p className="truncate text-xs text-white/40">{heroVideoUrl}</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => setValue('heroVideoUrl', '')}
-                                                className="shrink-0 text-xs text-red-300 hover:text-red-200"
-                                            >
-                                                Remover
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
+                                                                            <div className="mt-3 rounded-xl border border-white/10 bg-white/3 p-3">
+                                                                            <video src={heroVideoUrl} controls preload="metadata" className="w-full rounded-lg bg-black" />
+                                                                            <div className="mt-3 flex items-center justify-between gap-3">
+                                                                                <p className="truncate text-xs text-white/40">{heroVideoUrl}</p>
+                                                                                <div className="flex items-center gap-4">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <label htmlFor="videoSound" className="text-xs text-white/50">Som do vídeo</label>
+                                                                                        <input type="checkbox" id="videoSound" {...register('videoSoundEnabled')} className="toggle-switch" />
+                                                                                    </div>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setValue('heroVideoUrl', '')}
+                                                                                        className="shrink-0 text-xs text-red-300 hover:text-red-200"
+                                                                                    >
+                                                                                        Remover
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>                            <div>
                                 <label className="block text-sm font-medium text-white/72 mb-2">Foto do Evento <span className="text-white/35 font-normal">(background do hero)</span></label>
                                 <label className={`group flex flex-col items-center gap-2 py-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${uploadingType === 'weddingPhoto'
                                     ? 'border-[#C9A84C]/40 bg-[#C9A84C]/5'
@@ -617,6 +636,15 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                         </div>
                     )}
 
+                    {/* ── TAB: CONTEÚDO ── */}
+                    {tab === 'content' && (
+                        <ContentEditor 
+                            provider={provider}
+                            sectionsConfig={sectionsConfig}
+                            onConfigChange={setSectionsConfig}
+                        />
+                    )}
+
                     {/* ── TAB: VISUAL ── */}
                     {tab === 'visual' && (
                         <div className="space-y-8">
@@ -636,6 +664,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                 <SectionsEditor
                                     sections={sections}
                                     onChange={setSections}
+                                    sectionsConfig={watch('sectionsConfig')}
                                 />
                             </div>
                         </div>
