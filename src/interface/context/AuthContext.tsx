@@ -9,6 +9,7 @@ type AuthContextType = {
     login: (email: string, password: string) => Promise<void>
     register: (name: string, email: string, password: string) => Promise<void>
     logout: () => Promise<void>
+    refreshUser: () => Promise<void>
     isAuthenticated: boolean
 }
 
@@ -40,6 +41,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         initAuth()
     }, [])
+
+    // 401 em qualquer chamada autenticada (token expirado/revogado) encerra a sessão local.
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            localStorage.removeItem('auth_token')
+            httpGateway.clearToken()
+            setUser(null)
+        }
+        window.addEventListener('auth:unauthorized', handleUnauthorized)
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+    }, [])
+
+    // Recarrega plano/cobrança do servidor (ex.: ao voltar do checkout do Stripe).
+    const refreshUser = async () => {
+        try {
+            const userData = await httpGateway.getMe()
+            setUser(userData.user)
+        } catch (err) {
+            console.error('Refresh user error:', err)
+        }
+    }
 
     const login = async (email: string, password: string) => {
         setLoading(true)
@@ -101,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 login,
                 register,
                 logout,
+                refreshUser,
                 isAuthenticated: !!user,
             }}
         >

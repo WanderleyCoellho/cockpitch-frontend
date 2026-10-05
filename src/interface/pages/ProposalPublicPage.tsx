@@ -1,4 +1,5 @@
 ﻿import { useParams } from 'react-router-dom'
+import { sanitizeHtml } from '../../shared/sanitizeHtml'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mail, Phone, Instagram, Check, Quote, ChevronDown, Play, ImageOff, ExternalLink } from 'lucide-react'
@@ -324,7 +325,7 @@ function AboutSection({ provider, tk }: { provider?: Provider; tk: ThemeTokens }
                     <div
                         className="pp-body text-sm leading-relaxed mb-8"
                         style={{ color: 'var(--pp-muted)' }}
-                        dangerouslySetInnerHTML={{ __html: provider.aboutText }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(provider.aboutText) }}
                     />
                 )}
 

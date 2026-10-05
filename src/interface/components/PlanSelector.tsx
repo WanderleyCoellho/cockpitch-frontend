@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { loadStripe } from '@stripe/stripe-js'
 import { X, AlertTriangle, Loader2, Check } from 'lucide-react'
 import { PLANS, PUBLIC_PLAN_IDS, type PlanId } from '../../shared/plans'
 import { usePlan } from '../context/PlanContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 
-// Substituir pela chave pública do Stripe em produção
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY ?? '')
-
 export default function PlanSelector({ onClose }: { onClose: () => void }) {
-    const { currentPlan, setPlan } = usePlan()
+    const { currentPlan } = usePlan()
     const [loading, setLoading] = useState<PlanId | null>(null)
     const [checkoutError, setCheckoutError] = useState<string | null>(null)
     const isCourtesy = currentPlan.id === 'courtesy'
@@ -17,15 +13,8 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
     const handleSelectPlan = async (planId: PlanId) => {
         const plan = PLANS[planId]
 
-        if (planId === 'free') {
-            setPlan('free')
-            onClose()
-            return
-        }
-
-        if (!plan.stripePriceId || plan.stripePriceId.includes('placeholder')) {
-            // Modo dev: simula upgrade sem Stripe
-            setPlan(planId)
+        // Plano grátis/cortesia não passa pelo checkout. (Cancelamento/downgrade: portal do Stripe — próxima fase.)
+        if (!plan.checkoutTier) {
             onClose()
             return
         }
@@ -33,19 +22,13 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
         setLoading(planId)
         setCheckoutError(null)
         try {
-            const stripe = await stripePromise
-            if (!stripe) throw new Error('Stripe não inicializado')
-
-            const { sessionId } = await httpGateway.createStripeCheckout(plan.stripePriceId)
-            const result = await stripe.redirectToCheckout({ sessionId })
-            if (result.error) {
-                throw new Error(result.error.message)
-            }
+            const { url } = await httpGateway.createStripeCheckout(plan.checkoutTier)
+            if (!url) throw new Error('Não foi possível abrir o checkout. Tente novamente.')
+            window.location.assign(url)
         } catch (err) {
             console.error('Stripe error:', err)
             const message = err instanceof Error ? err.message : null
             setCheckoutError(message || 'Erro ao iniciar checkout. Tente novamente.')
-        } finally {
             setLoading(null)
         }
     }

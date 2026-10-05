@@ -9,7 +9,8 @@ export type Plan = {
     id: PlanId
     name: string
     price: number          // BRL/mês
-    stripePriceId: string  // Substituir pela chave real do Stripe
+    // Plano no backend usado no checkout (o preço do Stripe é resolvido no servidor via STRIPE_PRICE_*)
+    checkoutTier: 'STARTER' | 'PRO' | null
     limits: {
         proposalsPerMonth: number  // -1 = ilimitado
         providersMax: number
@@ -42,7 +43,7 @@ export const PLANS: Record<PlanId, Plan> = {
         id: 'free',
         name: 'Grátis',
         price: 0,
-        stripePriceId: '',
+        checkoutTier: null,
         limits: {
             proposalsPerMonth: 3,
             providersMax: 1,
@@ -57,7 +58,7 @@ export const PLANS: Record<PlanId, Plan> = {
         id: 'basic',
         name: 'Básico',
         price: 49,
-        stripePriceId: 'price_starter_placeholder',
+        checkoutTier: 'STARTER',
         limits: {
             proposalsPerMonth: 20,
             providersMax: 3,
@@ -72,7 +73,7 @@ export const PLANS: Record<PlanId, Plan> = {
         id: 'pro',
         name: 'Pro',
         price: 99,
-        stripePriceId: 'price_pro_placeholder',
+        checkoutTier: 'PRO',
         limits: proLimits,
         features: proFeatures,
         highlighted: true,
@@ -81,7 +82,7 @@ export const PLANS: Record<PlanId, Plan> = {
         id: 'courtesy',
         name: 'Cortesia',
         price: 0,
-        stripePriceId: '',
+        checkoutTier: null,
         limits: proLimits,
         features: [...proFeatures, 'Concedido via painel administrativo'],
         highlighted: false,

@@ -1,10 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { PLANS, type PlanId, type Plan } from '../../shared/plans'
 import { useAuth } from './AuthContext'
 
 type PlanContextValue = {
     currentPlan: Plan
-    setPlan: (planId: PlanId) => void
     canCreateProposal: (currentCount: number) => boolean
     canAddProvider: (currentCount: number) => boolean
     isAtLimit: (resource: 'proposals' | 'providers', currentCount: number) => boolean
@@ -12,31 +11,10 @@ type PlanContextValue = {
 
 const PlanContext = createContext<PlanContextValue | null>(null)
 
-function normalizeStoredPlanId(savedPlanId: string | null): PlanId {
-    switch (savedPlanId) {
-        case 'starter':
-        case 'basic':
-            return 'basic'
-        case 'pro':
-        case 'agency':
-            return 'pro'
-        case 'courtesy':
-            return 'courtesy'
-        case 'free':
-        default:
-            return 'free'
-    }
-}
-
 export function PlanProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth()
 
-    // Em produção virá do backend/Stripe webhook
-    // Para MVP, usa localStorage como fallback
-    const [planId, setPlanId] = useState<PlanId>(() => {
-        return normalizeStoredPlanId(localStorage.getItem('cockpitch_plan'))
-    })
-
+    // O plano vem SEMPRE do servidor (Stripe webhook / painel Ops). Nada de estado local editável.
     const backendPlanId: PlanId | null = (() => {
         if (user?.licensePolicy === 'COURTESY') return 'courtesy'
         if (!user?.planTier) return null
@@ -55,12 +33,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         }
     })()
 
-    const currentPlan = PLANS[backendPlanId ?? planId]
-
-    const setPlan = (id: PlanId) => {
-        setPlanId(id)
-        localStorage.setItem('cockpitch_plan', id)
-    }
+    const currentPlan = PLANS[backendPlanId ?? 'free']
 
     const canCreateProposal = (currentCount: number) => {
         const limit = currentPlan.limits.proposalsPerMonth
@@ -79,7 +52,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <PlanContext.Provider value={{ currentPlan, setPlan, canCreateProposal, canAddProvider, isAtLimit }}>
+        <PlanContext.Provider value={{ currentPlan, canCreateProposal, canAddProvider, isAtLimit }}>
             {children}
         </PlanContext.Provider>
     )

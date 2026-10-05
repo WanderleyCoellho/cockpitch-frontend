@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
@@ -8,9 +9,30 @@ import { usePlan } from '../context/PlanContext'
 import { ChartSpline, Lock, Sparkles, BarChart3, ArrowRight } from 'lucide-react'
 
 export default function AnalyticsPage() {
-    const { user } = useAuth()
+    const { user, refreshUser } = useAuth()
     const { currentPlan } = usePlan()
     const [showPlanSelector, setShowPlanSelector] = useState(false)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const checkoutResult = searchParams.get('checkout')
+
+    // Volta do Stripe: o webhook pode chegar alguns segundos depois, então recarrega o plano algumas vezes.
+    useEffect(() => {
+        if (checkoutResult !== 'success') return
+        let attempts = 0
+        refreshUser()
+        const timer = window.setInterval(() => {
+            attempts += 1
+            refreshUser()
+            if (attempts >= 5) window.clearInterval(timer)
+        }, 3000)
+        return () => window.clearInterval(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [checkoutResult])
+
+    const dismissCheckoutNotice = () => {
+        searchParams.delete('checkout')
+        setSearchParams(searchParams, { replace: true })
+    }
     const canUpgradePlan = currentPlan.id === 'free' || currentPlan.id === 'basic'
     const isCourtesy = currentPlan.id === 'courtesy'
 
@@ -41,6 +63,25 @@ export default function AnalyticsPage() {
 
     return (
         <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
+            {checkoutResult && (
+                <div
+                    role="status"
+                    className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-sm ${
+                        checkoutResult === 'success'
+                            ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
+                            : 'border-white/10 bg-white/5 text-white/70'
+                    }`}
+                >
+                    <span>
+                        {checkoutResult === 'success'
+                            ? 'Pagamento confirmado! Seu plano é atualizado em alguns segundos.'
+                            : 'Checkout cancelado. Nenhuma cobrança foi feita.'}
+                    </span>
+                    <button type="button" onClick={dismissCheckoutNotice} className="text-xs underline underline-offset-2">
+                        Fechar
+                    </button>
+                </div>
+            )}
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>

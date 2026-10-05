@@ -87,7 +87,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 weddingPhotoUrl: proposal.weddingPhotoUrl,
                 backstageMedia: proposal.backstageMedia ?? [],
                 differentialsMedia: proposal.differentialsMedia ?? [],
-                sectionsConfig: proposal.sectionsConfig,
+                sectionsConfig: proposal.sectionsConfig ?? undefined,
             }
             : { validityDays: 30, packageIds: [] },
     })

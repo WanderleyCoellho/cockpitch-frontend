@@ -15,7 +15,6 @@ Frontend React + Vite do Cockpitch, integrado ao backend dedicado via API HTTP.
 
 ```env
 VITE_API_URL=http://localhost:3001/api
-VITE_STRIPE_PUBLIC_KEY=pk_test_xxx
 ```
 
 3. Rode em desenvolvimento:
@@ -27,3 +26,14 @@ VITE_STRIPE_PUBLIC_KEY=pk_test_xxx
 - `npm run build`
 - `npm run typecheck`
 - `npm run lint`
+- `npm test`
+
+## Pagamentos
+
+O checkout é criado no backend (`POST /api/stripe/create-checkout` com `{ planTier }`) e o
+navegador é redirecionado para a `url` retornada. O frontend não precisa da chave pública do Stripe.
+O plano exibido vem sempre do servidor (`/api/auth/me`).
+
+## Especificações
+
+Roadmap e decisões de arquitetura ficam no repositório `cockpitch-backend`, em `specs/`.

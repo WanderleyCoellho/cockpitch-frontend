@@ -48,6 +48,38 @@ function normalizeProposal(proposal: any) {
     }
 }
 
+export class ApiError extends Error {
+    constructor(
+        public readonly status: number,
+        message: string,
+        public readonly code?: string
+    ) {
+        super(message)
+        this.name = 'ApiError'
+    }
+}
+
+const FALLBACK_MESSAGES: Record<number, string> = {
+    400: 'Dados inválidos. Revise os campos e tente novamente.',
+    401: 'Sua sessão expirou. Entre novamente.',
+    403: 'Você não tem permissão para esta ação.',
+    404: 'Não encontrado.',
+    409: 'Já existe um registro com esses dados.',
+    413: 'Arquivo ou conteúdo grande demais.',
+    429: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+}
+
+/** Extrator central de mensagem de erro da API (formato `{ message, code?, issues? }`). */
+export function extractErrorMessage(status: number, data: any): string {
+    const issue = Array.isArray(data?.issues) ? data.issues[0] : null
+    if (issue?.message && issue.message !== 'Required') {
+        const field = Array.isArray(issue.path) && issue.path.length ? `${issue.path.join('.')}: ` : ''
+        return `${field}${issue.message}`
+    }
+    if (typeof data?.message === 'string' && data.message && status < 500) return data.message
+    return FALLBACK_MESSAGES[status] ?? 'Algo deu errado. Tente novamente em instantes.'
+}
+
 class HttpGateway {
     private token: string | null = null
 
@@ -79,12 +111,26 @@ class HttpGateway {
             body: body ? JSON.stringify(body) : undefined
         })
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.message || 'Request failed')
+        // Respostas sem corpo (204) ou não-JSON (ex.: página de erro do proxy) não podem quebrar o parse.
+        const text = await response.text()
+        let data: any = null
+        if (text) {
+            try {
+                data = JSON.parse(text)
+            } catch {
+                data = null
+            }
         }
 
-        return response.json()
+        if (!response.ok) {
+            if (response.status === 401 && requireAuth && this.token) {
+                // Sessão expirada/inválida: tratamento central (AuthContext escuta este evento).
+                window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+            }
+            throw new ApiError(response.status, extractErrorMessage(response.status, data), data?.code)
+        }
+
+        return data as T
     }
 
     async register(email: string, password: string, name: string) {
@@ -250,8 +296,8 @@ class HttpGateway {
         return normalizeProposal(result.proposal)
     }
 
-    async createStripeCheckout(priceId: string): Promise<{ sessionId: string }> {
-        return this.request<{ sessionId: string }>('POST', '/stripe/create-checkout', { priceId }, true)
+    async createStripeCheckout(planTier: 'STARTER' | 'PRO'): Promise<{ sessionId: string; url: string | null }> {
+        return this.request<{ sessionId: string; url: string | null }>('POST', '/stripe/create-checkout', { planTier }, true)
     }
 }
 

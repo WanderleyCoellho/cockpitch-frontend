@@ -113,6 +113,8 @@ export type Proposal = {
     theme?: string
     themeCustom?: ThemeCustom | null
     sections?: ProposalSection[] | null
+    sectionsConfig?: Record<string, any> | null
+    videoSoundEnabled?: boolean
     packages?: Array<Package & { items?: PackageItem[] }>
     createdAt: string
     updatedAt: string
