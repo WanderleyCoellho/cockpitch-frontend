@@ -94,11 +94,11 @@ export default function ThemeSelector({ theme, themeCustom, onThemeChange, onCus
     const currentBodyFont = themeCustom?.body_font ?? THEMES[selectedKey]?.body_font ?? 'Inter'
 
     useEffect(() => {
-        if (document.querySelector('link[data-cockpitch-fonts]')) return
+        if (document.querySelector('link[data-lumen-deal-fonts]')) return
         const link = document.createElement('link')
         link.rel = 'stylesheet'
         link.href = GOOGLE_FONTS_URL
-        link.setAttribute('data-cockpitch-fonts', 'true')
+        link.setAttribute('data-lumen-deal-fonts', 'true')
         document.head.appendChild(link)
     }, [])
 

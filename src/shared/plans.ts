@@ -1,5 +1,5 @@
 /**
- * Definição dos planos do Cockpitch
+ * Definição dos planos do Lumen Deal
  * Usada em PlanContext, PlanSelector e verificações de limite
  */
 

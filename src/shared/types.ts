@@ -1,5 +1,5 @@
 /**
- * Tipos base do projeto Cockpitch
+ * Tipos base do projeto Lumen Deal
  */
 
 export type ProposalMediaItem = {

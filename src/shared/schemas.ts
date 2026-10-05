@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * Schemas de validação Zod para Cockpitch
+ * Schemas de validação Zod para Lumen Deal
  */
 
 export const ProviderSchema = z.object({

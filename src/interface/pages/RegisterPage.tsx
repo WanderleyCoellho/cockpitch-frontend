@@ -39,7 +39,7 @@ export default function RegisterPage() {
                 <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:56px_56px]" />
                 <div className="relative z-10 max-w-xl px-14 py-16 flex flex-col justify-between">
                     <div>
-                        <p className="text-[11px] uppercase tracking-[0.35em] text-[#C9A84C] font-semibold">Cockpitch</p>
+                        <p className="text-[11px] uppercase tracking-[0.35em] text-[#C9A84C] font-semibold">Lumen Deal</p>
                         <h1 className="mt-6 text-5xl leading-[1.05] font-light tracking-tight text-white">
                             Estruture sua vitrine comercial desde o primeiro acesso.
                         </h1>

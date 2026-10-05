@@ -1,6 +1,6 @@
-# Cockpitch - Plataforma de Proposta Comercial
+# Lumen Deal — Plataforma de Propostas Comerciais
 
-Frontend React + Vite do Cockpitch, integrado ao backend dedicado via API HTTP.
+Frontend React + Vite do Lumen Deal, integrado ao backend dedicado via API HTTP.
 
 ## Requisitos
 

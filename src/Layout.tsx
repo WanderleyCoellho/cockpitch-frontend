@@ -28,7 +28,7 @@ export default function Layout() {
             <aside className="hidden md:flex flex-col w-56 border-r border-white/5 bg-[#0A0A0A] fixed h-full z-40">
                 <div className="px-5 py-5 border-b border-white/5">
                     <span className="text-base font-semibold tracking-tight text-white">
-                        Cockpitch<span className="text-[#C9A84C]"> Pro</span>
+                        Lumen<span className="text-[#C9A84C]"> Deal</span>
                     </span>
                 </div>
                 <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -67,7 +67,7 @@ export default function Layout() {
 
             <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-[#0A0A0A] border-b border-white/5 flex items-center justify-between px-4">
                 <span className="text-sm font-semibold text-white">
-                    Cockpitch<span className="text-[#C9A84C]"> Pro</span>
+                    Lumen<span className="text-[#C9A84C]"> Deal</span>
                 </span>
                 <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-white/60">
                     {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
