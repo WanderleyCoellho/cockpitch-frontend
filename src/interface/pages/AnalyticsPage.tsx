@@ -10,7 +10,7 @@ import { ChartSpline, Lock, Sparkles, BarChart3, ArrowRight } from 'lucide-react
 
 export default function AnalyticsPage() {
     const { user, refreshUser } = useAuth()
-    const { currentPlan } = usePlan()
+    const { currentPlan, entitlements, usage, canManageBilling } = usePlan()
     const [showPlanSelector, setShowPlanSelector] = useState(false)
     const [searchParams, setSearchParams] = useSearchParams()
     const checkoutResult = searchParams.get('checkout')
@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
         searchParams.delete('checkout')
         setSearchParams(searchParams, { replace: true })
     }
-    const canUpgradePlan = currentPlan.id === 'free' || currentPlan.id === 'basic'
+    const canUpgradePlan = canManageBilling && currentPlan.id !== 'team' && currentPlan.id !== 'courtesy'
     const isCourtesy = currentPlan.id === 'courtesy'
 
     const { data: provider } = useQuery({
@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
         queryFn: () => httpGateway.listProviders(),
     })
 
-    const canViewAnalytics = currentPlan.limits.analytics
+    const canViewAnalytics = entitlements?.analytics ?? currentPlan.limits.analytics
     const accepted = proposals.filter((proposal: any) => proposal.commercialStatus === 'aceita').length
     const negotiating = proposals.filter((proposal: any) => proposal.commercialStatus === 'negociando').length
     const conversionRate = proposals.length ? Math.round((accepted / proposals.length) * 100) : 0
@@ -189,23 +189,21 @@ export default function AnalyticsPage() {
                         <div>
                             <p className="text-xs text-white/45">Propostas/mês</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.proposalsPerMonth === -1
+                                {(entitlements?.proposalsPerMonth ?? currentPlan.limits.proposalsPerMonth) === -1
                                     ? 'Ilimitado'
-                                    : `${proposals.length} / ${currentPlan.limits.proposalsPerMonth}`}
+                                    : `${usage?.proposalsThisMonth ?? 0} / ${entitlements?.proposalsPerMonth ?? currentPlan.limits.proposalsPerMonth}`}
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs text-white/45">Prestadores</p>
+                            <p className="text-xs text-white/45">Pessoas na equipe</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.providersMax === -1
-                                    ? 'Ilimitado'
-                                    : `${providers.length} / ${currentPlan.limits.providersMax}`}
+                                {`${usage?.members ?? 1} / ${entitlements?.members ?? currentPlan.limits.members}`}
                             </p>
                         </div>
                         <div>
                             <p className="text-xs text-white/45">Analytics</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.analytics ? 'Ativo' : 'Indisponível'}
+                                {canViewAnalytics ? 'Ativo' : 'Indisponível'}
                             </p>
                         </div>
                     </div>

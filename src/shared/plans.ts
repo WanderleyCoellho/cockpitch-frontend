@@ -1,92 +1,98 @@
 /**
- * Definição dos planos do Lumen Deal
- * Usada em PlanContext, PlanSelector e verificações de limite
+ * Vitrine dos planos do Lumen Deal (nomes, preços e textos).
+ * Os LIMITES reais vêm do servidor (`entitlements` do workspace); os números aqui são só para exibição.
  */
+import type { PlanTier } from './types'
 
-export type PlanId = 'free' | 'basic' | 'pro' | 'courtesy'
+export type PlanId = 'free' | 'basic' | 'pro' | 'team' | 'courtesy'
 
 export type Plan = {
     id: PlanId
     name: string
-    price: number          // BRL/mês
-    // Plano no backend usado no checkout (o preço do Stripe é resolvido no servidor via STRIPE_PRICE_*)
-    checkoutTier: 'STARTER' | 'PRO' | null
+    price: number // BRL/mês
+    tier: PlanTier
+    /** Plano assinável pelo checkout (o preço do Stripe é resolvido no servidor via STRIPE_PRICE_*). */
+    checkoutTier: 'STARTER' | 'PRO' | 'AGENCY' | null
+    tagline: string
     limits: {
-        proposalsPerMonth: number  // -1 = ilimitado
-        providersMax: number
-        customDomain: boolean
+        proposalsPerMonth: number // -1 = ilimitado
+        members: number
+        storageGb: number
         analytics: boolean
-        prioritySupport: boolean
     }
     features: string[]
     highlighted: boolean
 }
-
-const proLimits = {
-    proposalsPerMonth: 100,
-    providersMax: 10,
-    customDomain: true,
-    analytics: true,
-    prioritySupport: false,
-} as const
-
-const proFeatures = [
-    'Até 100 propostas/mês',
-    '10 prestadores',
-    'Analytics avançado',
-    'Domínio customizado',
-    'Suporte prioritário',
-]
 
 export const PLANS: Record<PlanId, Plan> = {
     free: {
         id: 'free',
         name: 'Grátis',
         price: 0,
+        tier: 'FREE',
         checkoutTier: null,
-        limits: {
-            proposalsPerMonth: 3,
-            providersMax: 1,
-            customDomain: false,
-            analytics: false,
-            prioritySupport: false,
-        },
-        features: ['Até 3 propostas/mês', '1 prestador', 'Página pública básica'],
+        tagline: 'Para experimentar',
+        limits: { proposalsPerMonth: 3, members: 1, storageGb: 0.5, analytics: false },
+        features: ['3 propostas por mês', '1 usuário', '500 MB de arquivos', 'Marca "Feito com Lumen Deal"'],
         highlighted: false,
     },
     basic: {
         id: 'basic',
-        name: 'Básico',
+        name: 'Essencial',
         price: 49,
+        tier: 'STARTER',
         checkoutTier: 'STARTER',
-        limits: {
-            proposalsPerMonth: 20,
-            providersMax: 3,
-            customDomain: false,
-            analytics: true,
-            prioritySupport: false,
-        },
-        features: ['Até 20 propostas/mês', '3 prestadores', 'Analytics básico', 'Suporte por email'],
+        tagline: 'Para profissionais autônomos',
+        limits: { proposalsPerMonth: 30, members: 1, storageGb: 5, analytics: true },
+        features: ['30 propostas por mês', '1 usuário', '5 GB de arquivos', 'Sem a marca Lumen Deal', 'Aceite online e PDF', 'Analytics de visualização'],
         highlighted: false,
     },
     pro: {
         id: 'pro',
-        name: 'Pro',
+        name: 'Profissional',
         price: 99,
+        tier: 'PRO',
         checkoutTier: 'PRO',
-        limits: proLimits,
-        features: proFeatures,
+        tagline: 'Para pequenas empresas',
+        limits: { proposalsPerMonth: -1, members: 3, storageGb: 20, analytics: true },
+        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Modelos próprios', 'Avisos por e-mail', 'Tudo do Essencial'],
         highlighted: true,
+    },
+    team: {
+        id: 'team',
+        name: 'Equipe',
+        price: 249,
+        tier: 'AGENCY',
+        checkoutTier: 'AGENCY',
+        tagline: 'Para times comerciais',
+        limits: { proposalsPerMonth: -1, members: 10, storageGb: 100, analytics: true },
+        features: ['Propostas ilimitadas', 'Até 10 pessoas na equipe', '100 GB de arquivos', 'Papéis e permissões', 'Suporte prioritário', 'Tudo do Profissional'],
+        highlighted: false,
     },
     courtesy: {
         id: 'courtesy',
         name: 'Cortesia',
         price: 0,
+        tier: 'PRO',
         checkoutTier: null,
-        limits: proLimits,
-        features: [...proFeatures, 'Concedido via painel administrativo'],
+        tagline: 'Concedido pela Lumen Dev Studios',
+        limits: { proposalsPerMonth: -1, members: 3, storageGb: 20, analytics: true },
+        features: ['Recursos do Profissional', 'Concedido via painel administrativo'],
         highlighted: false,
     },
 }
 
-export const PUBLIC_PLAN_IDS: PlanId[] = ['free', 'basic', 'pro']
+export const PUBLIC_PLAN_IDS: PlanId[] = ['free', 'basic', 'pro', 'team']
+
+export function planIdForTier(tier: PlanTier | undefined | null): PlanId {
+    switch (tier) {
+        case 'STARTER':
+            return 'basic'
+        case 'PRO':
+            return 'pro'
+        case 'AGENCY':
+            return 'team'
+        default:
+            return 'free'
+    }
+}

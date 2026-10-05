@@ -3,6 +3,8 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
+import type { WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 function normalizePackage(pkg: any) {
@@ -82,6 +84,12 @@ export function extractErrorMessage(status: number, data: any): string {
 
 class HttpGateway {
     private token: string | null = null
+    private workspaceId: string | null = null
+
+    /** Empresa ativa: enviada em toda chamada autenticada (o backend valida a associação). */
+    setWorkspace(workspaceId: string | null) {
+        this.workspaceId = workspaceId
+    }
 
     setToken(token: string) {
         this.token = token
@@ -103,6 +111,7 @@ class HttpGateway {
 
         if (requireAuth && this.token) {
             headers['Authorization'] = `Bearer ${this.token}`
+            if (this.workspaceId) headers['X-Workspace-Id'] = this.workspaceId
         }
 
         const response = await fetch(`${API_URL}${path}`, {
@@ -133,8 +142,13 @@ class HttpGateway {
         return data as T
     }
 
-    async register(email: string, password: string, name: string) {
-        const result = await this.request<any>('POST', '/auth/register', { email, password, name }, false)
+    async register(
+        email: string,
+        password: string,
+        name: string,
+        extra: { workspaceName?: string; segment?: string; inviteToken?: string } = {}
+    ) {
+        const result = await this.request<any>('POST', '/auth/register', { email, password, name, ...extra }, false)
         if (result.token) this.setToken(result.token)
         return result
     }
@@ -296,7 +310,52 @@ class HttpGateway {
         return normalizeProposal(result.proposal)
     }
 
-    async createStripeCheckout(planTier: 'STARTER' | 'PRO'): Promise<{ sessionId: string; url: string | null }> {
+    // ---------- Workspaces e equipe ----------
+    async getCurrentWorkspace(): Promise<WorkspaceDetails> {
+        const result = await this.request<{ workspace: WorkspaceDetails }>('GET', '/workspaces/current')
+        return result.workspace
+    }
+
+    async updateWorkspace(data: { name?: string; segment?: string; brandColor?: string | null; logoUrl?: string | null }) {
+        const result = await this.request<any>('PATCH', '/workspaces/current', data)
+        return result.workspace
+    }
+
+    async listMembers(): Promise<{ members: WorkspaceMemberItem[]; invites: WorkspaceInviteItem[] }> {
+        return this.request('GET', '/workspaces/current/members')
+    }
+
+    async createInvite(email: string, role: 'ADMIN' | 'MEMBER'): Promise<{ invite: WorkspaceInviteItem; inviteUrl: string }> {
+        return this.request('POST', '/workspaces/current/invites', { email, role })
+    }
+
+    async revokeInvite(inviteId: string) {
+        return this.request<void>('DELETE', `/workspaces/current/invites/${inviteId}`)
+    }
+
+    async updateMemberRole(memberId: string, role: 'ADMIN' | 'MEMBER') {
+        return this.request<any>('PATCH', `/workspaces/current/members/${memberId}`, { role })
+    }
+
+    async removeMember(memberId: string) {
+        return this.request<void>('DELETE', `/workspaces/current/members/${memberId}`)
+    }
+
+    async getInvite(token: string): Promise<{
+        email: string
+        role: 'ADMIN' | 'MEMBER'
+        expiresAt: string
+        workspace: { name: string; logoUrl?: string | null }
+    }> {
+        const result = await this.request<any>('GET', `/invites/${encodeURIComponent(token)}`, undefined, false)
+        return result.invite
+    }
+
+    async acceptInvite(token: string): Promise<{ workspaceId: string }> {
+        return this.request('POST', `/invites/${encodeURIComponent(token)}/accept`)
+    }
+
+    async createStripeCheckout(planTier: 'STARTER' | 'PRO' | 'AGENCY'): Promise<{ sessionId: string; url: string | null }> {
         return this.request<{ sessionId: string; url: string | null }>('POST', '/stripe/create-checkout', { planTier }, true)
     }
 }

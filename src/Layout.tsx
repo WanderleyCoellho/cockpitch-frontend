@@ -1,12 +1,15 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './interface/context/AuthContext'
-import { LayoutDashboard, FileText, Package, BarChart3, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, FileText, Package, BarChart3, LogOut, Menu, X, Users, Building2 } from 'lucide-react'
+import HelpTip from './interface/components/help/HelpTip'
+import { usePlan } from './interface/context/PlanContext'
 import { useState } from 'react'
 
 export default function Layout() {
     const navigate = useNavigate()
     const location = useLocation()
-    const { user, logout } = useAuth()
+    const { user, logout, workspaces, activeWorkspace, switchWorkspace } = useAuth()
+    const { currentPlan } = usePlan()
     const [menuOpen, setMenuOpen] = useState(false)
 
     const handleLogout = async () => {
@@ -20,8 +23,42 @@ export default function Layout() {
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { label: 'Propostas', path: '/proposals', icon: FileText },
         { label: 'Pacotes', path: '/packages', icon: Package },
+        { label: 'Equipe', path: '/equipe', icon: Users },
         { label: 'Analytics', path: '/analytics', icon: BarChart3 }
     ]
+
+    const workspacePicker = activeWorkspace && (
+        <div className="px-3 pt-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-white/35 flex items-center gap-1">
+                        <Building2 className="w-3 h-3" /> Empresa
+                    </span>
+                    {workspaces.length > 1 && <HelpTip helpKey="workspace.switch" side="right" />}
+                </div>
+                {workspaces.length > 1 ? (
+                    <select
+                        aria-label="Empresa ativa"
+                        value={activeWorkspace.id}
+                        onChange={(event) => {
+                            switchWorkspace(event.target.value)
+                            navigate('/dashboard')
+                        }}
+                        className="mt-1 w-full bg-transparent text-sm font-medium text-white focus:outline-none"
+                    >
+                        {workspaces.map((workspace) => (
+                            <option key={workspace.id} value={workspace.id} className="bg-[#0A0A0A]">
+                                {workspace.name}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <p className="mt-1 text-sm font-medium text-white truncate">{activeWorkspace.name}</p>
+                )}
+                <p className="text-[10px] text-[#C9A84C] mt-0.5">Plano {currentPlan.name}</p>
+            </div>
+        </div>
+    )
 
     return (
         <div className="min-h-screen bg-[#0F0F0F] text-white flex">
@@ -31,6 +68,7 @@ export default function Layout() {
                         Lumen<span className="text-[#C9A84C]"> Deal</span>
                     </span>
                 </div>
+                {workspacePicker}
                 <nav className="flex-1 px-3 py-4 space-y-0.5">
                     {navItems.map(({ label, path, icon: Icon }) => (
                         <button
@@ -80,6 +118,7 @@ export default function Layout() {
                         className="bg-[#0A0A0A] w-56 h-full border-r border-white/5 pt-14 px-3 py-4"
                         onClick={(e) => e.stopPropagation()}
                     >
+                        <div className="-mx-3 mb-3">{workspacePicker}</div>
                         <nav className="space-y-0.5">
                             {navItems.map(({ label, path, icon: Icon }) => (
                                 <button

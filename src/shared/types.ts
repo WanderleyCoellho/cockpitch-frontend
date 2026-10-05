@@ -120,6 +120,59 @@ export type Proposal = {
     updatedAt: string
 }
 
+export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER'
+export type PlanTier = 'FREE' | 'STARTER' | 'PRO' | 'AGENCY'
+
+export type Entitlements = {
+    tier: PlanTier
+    effectiveTier: PlanTier
+    isCourtesy: boolean
+    proposalsPerMonth: number
+    members: number
+    storageGb: number
+    removeBranding: boolean
+    customTemplates: boolean
+    emailNotifications: boolean
+    analytics: boolean
+}
+
+export type WorkspaceSummary = {
+    id: string
+    name: string
+    slug: string
+    segment: string
+    logoUrl?: string | null
+    brandColor?: string | null
+    role: WorkspaceRole
+    planTier: PlanTier
+    billingStatus: 'INACTIVE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    licensePolicy: 'STANDARD' | 'COURTESY'
+    licensePolicyNote?: string | null
+    providerId: string | null
+    entitlements: Entitlements
+}
+
+export type WorkspaceDetails = WorkspaceSummary & {
+    locale: string
+    currency: string
+    usage: { proposalsThisMonth: number; members: number; pendingInvites: number }
+}
+
+export type WorkspaceMemberItem = {
+    id: string
+    role: WorkspaceRole
+    createdAt: string
+    user: { id: string; name: string; email: string }
+}
+
+export type WorkspaceInviteItem = {
+    id: string
+    email: string
+    role: WorkspaceRole
+    expiresAt: string
+    createdAt: string
+}
+
 export type AuthUser = {
     id: string
     email: string
@@ -130,4 +183,6 @@ export type AuthUser = {
     billingStatus?: 'INACTIVE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
     licensePolicy?: 'STANDARD' | 'COURTESY'
     licensePolicyNote?: string | null
+    activeWorkspaceId?: string | null
+    workspaces?: WorkspaceSummary[]
 }

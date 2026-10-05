@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,6 +9,10 @@ import { LoginSchema, type LoginFormData } from '../../shared/schemas'
 
 export default function LoginPage() {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    // Só caminhos internos (evita redirecionamento aberto para sites externos).
+    const redirectParam = searchParams.get('redirect')
+    const redirectTo = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '/dashboard'
     const { login, loading, error: authError } = useAuth()
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -25,7 +29,7 @@ export default function LoginPage() {
         setIsSubmitting(true)
         try {
             await login(data.email, data.password)
-            navigate('/dashboard')
+            navigate(redirectTo)
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro ao fazer login'
             setError('email', { message })

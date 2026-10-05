@@ -19,7 +19,7 @@ const STATUS_SURFACE: Record<NonNullable<Proposal['commercialStatus']>, string> 
 export default function ProposalsPage() {
     const { user } = useAuth()
     const queryClient = useQueryClient()
-    const { currentPlan, canCreateProposal } = usePlan()
+    const { currentPlan, canCreateProposal, refreshUsage } = usePlan()
     const [showForm, setShowForm] = useState(false)
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
     const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
@@ -78,7 +78,7 @@ export default function ProposalsPage() {
         statusMutation.mutate({ proposalId, status })
     }
 
-    const atProposalLimit = !canCreateProposal(proposals.length)
+    const atProposalLimit = !canCreateProposal()
 
     if (!provider) {
         return (
@@ -125,7 +125,10 @@ export default function ProposalsPage() {
                     proposal={selectedProposal}
                     providerId={provider.id}
                     onClose={handleCloseForm}
-                    onSuccess={() => refetch()}
+                    onSuccess={() => {
+                        refetch()
+                        refreshUsage()
+                    }}
                 />
             )}
 

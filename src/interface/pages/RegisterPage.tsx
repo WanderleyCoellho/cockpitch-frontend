@@ -1,15 +1,21 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, AlertTriangle, Loader2, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { RegisterSchema, type RegisterFormData } from '../../shared/schemas'
+import { SEGMENTS } from '../../shared/segments'
+import { FieldLabel } from '../components/help/HelpTip'
 
 export default function RegisterPage() {
     const navigate = useNavigate()
     const { register: registerUser, loading, error: authError } = useAuth()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [searchParams] = useSearchParams()
+    // Cadastro a partir de um convite de equipe: entra direto na empresa de quem convidou.
+    const inviteToken = searchParams.get('convite') ?? undefined
+    const invitedEmail = searchParams.get('email') ?? ''
 
     const {
         register,
@@ -18,12 +24,17 @@ export default function RegisterPage() {
         setError,
     } = useForm<RegisterFormData>({
         resolver: zodResolver(RegisterSchema),
+        defaultValues: { email: invitedEmail, segment: 'GENERAL' },
     })
 
     const onSubmit = async (data: RegisterFormData) => {
         setIsSubmitting(true)
         try {
-            await registerUser(data.name, data.email, data.password)
+            await registerUser(data.name, data.email, data.password, {
+                inviteToken,
+                workspaceName: inviteToken ? undefined : data.workspaceName?.trim() || undefined,
+                segment: inviteToken ? undefined : data.segment,
+            })
             navigate('/dashboard')
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro ao criar conta'
@@ -66,7 +77,11 @@ export default function RegisterPage() {
                         <h1 className="text-3xl font-semibold tracking-tight text-white">
                             Criar conta
                         </h1>
-                        <p className="text-sm text-white/45 mt-2">Cadastre-se para acessar o painel comercial.</p>
+                        <p className="text-sm text-white/45 mt-2">
+                            {inviteToken
+                                ? 'Crie sua conta para entrar na equipe que te convidou.'
+                                : 'Comece grátis. Monte propostas que seus clientes navegam, aceitam e baixam em PDF.'}
+                        </p>
                     </div>
 
                     {authError && (
@@ -90,10 +105,41 @@ export default function RegisterPage() {
                             )}
                         </div>
 
+                        {!inviteToken && (
+                            <>
+                                <div>
+                                    <FieldLabel htmlFor="workspaceName" helpKey="register.workspaceName">Nome da empresa</FieldLabel>
+                                    <input
+                                        id="workspaceName"
+                                        type="text"
+                                        placeholder="Ex.: Estúdio Luz (ou seu nome profissional)"
+                                        className="w-full px-4 py-3 border border-white/15 rounded-xl bg-black/20 text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A84C]/50 transition"
+                                        {...register('workspaceName')}
+                                    />
+                                </div>
+
+                                <div>
+                                    <FieldLabel htmlFor="segment" helpKey="register.segment">Segmento</FieldLabel>
+                                    <select
+                                        id="segment"
+                                        className="w-full px-4 py-3 border border-white/15 rounded-xl bg-black/20 text-white focus:outline-none focus:border-[#C9A84C]/50 transition"
+                                        {...register('segment')}
+                                    >
+                                        {SEGMENTS.map((segment) => (
+                                            <option key={segment.id} value={segment.id}>
+                                                {segment.label} ({segment.example})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
+                        )}
+
                         <div>
                             <label className="block text-[10px] font-medium tracking-widest uppercase text-white/50 mb-1.5">Email</label>
                             <input
                                 type="email"
+                                readOnly={!!inviteToken}
                                 placeholder="seu@email.com"
                                 className="w-full px-4 py-3 border border-white/15 rounded-xl bg-black/20 text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A84C]/50 transition"
                                 {...register('email')}
@@ -107,7 +153,7 @@ export default function RegisterPage() {
                             <label className="block text-[10px] font-medium tracking-widest uppercase text-white/50 mb-1.5">Senha</label>
                             <input
                                 type="password"
-                                placeholder="******"
+                                placeholder="Mínimo de 8 caracteres"
                                 className="w-full px-4 py-3 border border-white/15 rounded-xl bg-black/20 text-white placeholder:text-white/30 focus:outline-none focus:border-[#C9A84C]/50 transition"
                                 {...register('password')}
                             />
