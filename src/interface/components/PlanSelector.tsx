@@ -5,7 +5,7 @@ import { usePlan } from '../context/PlanContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 
 export default function PlanSelector({ onClose }: { onClose: () => void }) {
-    const { currentPlan, canManageBilling } = usePlan()
+    const { currentPlan, canManageBilling, hasSubscription } = usePlan()
     const [loading, setLoading] = useState<PlanId | null>(null)
     const [checkoutError, setCheckoutError] = useState<string | null>(null)
     const isCourtesy = currentPlan.id === 'courtesy'
@@ -13,15 +13,21 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
     const handleSelectPlan = async (planId: PlanId) => {
         const plan = PLANS[planId]
 
-        // Plano grátis/cortesia não passa pelo checkout. (Cancelamento/downgrade: portal do Stripe — próxima fase.)
-        if (!plan.checkoutTier) {
-            onClose()
-            return
-        }
-
-        setLoading(planId)
         setCheckoutError(null)
         try {
+            // Voltar para o Grátis = cancelar a assinatura no portal do Stripe (vale até o fim do período pago).
+            if (!plan.checkoutTier) {
+                if (!hasSubscription) {
+                    onClose()
+                    return
+                }
+                setLoading(planId)
+                const { url } = await httpGateway.openBillingPortal()
+                window.location.assign(url)
+                return
+            }
+
+            setLoading(planId)
             const { url } = await httpGateway.createStripeCheckout(plan.checkoutTier)
             if (!url) throw new Error('Não foi possível abrir o checkout. Tente novamente.')
             window.location.assign(url)
@@ -140,12 +146,16 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                                                     ? 'Incluso na Cortesia'
                                                     : 'Plano Atual'
                                                 : plan.price === 0
-                                                    ? 'Usar Gratuitamente'
-                                                    : 'Assinar Agora'}
+                                                    ? hasSubscription
+                                                        ? 'Cancelar assinatura'
+                                                        : 'Usar Gratuitamente'
+                                                    : hasSubscription
+                                                        ? 'Trocar para este plano'
+                                                        : 'Assinar Agora'}
                                     </button>
                                     {isLoading && (
                                         <div className="flex items-center justify-center gap-2 text-xs text-white/40 -mt-1">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Redirecionando para checkout
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Abrindo o pagamento seguro do Stripe
                                         </div>
                                     )}
                                 </div>
@@ -154,7 +164,7 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                     </div>
 
                     <p className="text-xs text-white/40 text-center mt-6">
-                        Cancele a qualquer momento. Sem taxa de cancelamento.
+                        Pagamento seguro pelo Stripe. Troque de plano ou cancele quando quiser; o cancelamento vale no fim do período já pago.
                     </p>
                 </div>
             </div>

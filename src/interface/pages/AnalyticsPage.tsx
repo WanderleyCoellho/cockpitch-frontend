@@ -10,24 +10,47 @@ import { ChartSpline, Lock, Sparkles, BarChart3, ArrowRight } from 'lucide-react
 
 export default function AnalyticsPage() {
     const { user, refreshUser } = useAuth()
-    const { currentPlan, entitlements, usage, canManageBilling } = usePlan()
+    const { currentPlan, entitlements, usage, canManageBilling, billingStatus, hasSubscription, refreshUsage } = usePlan()
     const [showPlanSelector, setShowPlanSelector] = useState(false)
+    const [portalLoading, setPortalLoading] = useState(false)
+    const [portalError, setPortalError] = useState<string | null>(null)
     const [searchParams, setSearchParams] = useSearchParams()
     const checkoutResult = searchParams.get('checkout')
 
-    // Volta do Stripe: o webhook pode chegar alguns segundos depois, então recarrega o plano algumas vezes.
+    // Volta do Stripe: sincroniza na hora e, por garantia, recarrega o plano mais algumas vezes (o webhook também atualiza).
     useEffect(() => {
-        if (checkoutResult !== 'success') return
+        if (checkoutResult !== 'success' && checkoutResult !== 'portal') return
+        const sessionId = searchParams.get('session_id')
+        const refresh = () => {
+            refreshUser()
+            refreshUsage()
+        }
+        httpGateway.syncBilling(sessionId).catch(() => undefined).finally(refresh)
+        if (sessionId) {
+            searchParams.delete('session_id')
+            setSearchParams(searchParams, { replace: true })
+        }
         let attempts = 0
-        refreshUser()
         const timer = window.setInterval(() => {
             attempts += 1
-            refreshUser()
-            if (attempts >= 5) window.clearInterval(timer)
+            refresh()
+            if (attempts >= 4) window.clearInterval(timer)
         }, 3000)
         return () => window.clearInterval(timer)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [checkoutResult])
+
+    const openPortal = async () => {
+        setPortalLoading(true)
+        setPortalError(null)
+        try {
+            const { url } = await httpGateway.openBillingPortal()
+            window.location.assign(url)
+        } catch (err) {
+            setPortalError(err instanceof Error ? err.message : 'Não foi possível abrir o portal de assinatura.')
+            setPortalLoading(false)
+        }
+    }
 
     const dismissCheckoutNotice = () => {
         searchParams.delete('checkout')
@@ -75,10 +98,20 @@ export default function AnalyticsPage() {
                     <span>
                         {checkoutResult === 'success'
                             ? 'Pagamento confirmado! Seu plano é atualizado em alguns segundos.'
-                            : 'Checkout cancelado. Nenhuma cobrança foi feita.'}
+                            : checkoutResult === 'portal'
+                                ? 'Assinatura conferida. Alterações feitas no portal já valem por aqui.'
+                                : 'Checkout cancelado. Nenhuma cobrança foi feita.'}
                     </span>
                     <button type="button" onClick={dismissCheckoutNotice} className="text-xs underline underline-offset-2">
                         Fechar
+                    </button>
+                </div>
+            )}
+            {billingStatus === 'PAST_DUE' && canManageBilling && (
+                <div role="alert" className="flex items-center justify-between gap-4 flex-wrap rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+                    <span>Não conseguimos cobrar a última fatura. Atualize a forma de pagamento para manter seu plano.</span>
+                    <button type="button" onClick={openPortal} disabled={portalLoading} className="rounded-full bg-amber-300 px-4 py-1.5 text-xs font-semibold text-black hover:bg-amber-200 disabled:opacity-60">
+                        {portalLoading ? 'Abrindo…' : 'Atualizar pagamento'}
                     </button>
                 </div>
             )}
@@ -175,15 +208,30 @@ export default function AnalyticsPage() {
                                 <p className="mt-2 text-sm text-white/45">{user.licensePolicyNote}</p>
                             )}
                         </div>
-                        {canUpgradePlan && (
-                            <button
-                                onClick={() => setShowPlanSelector(true)}
-                                className="px-4 py-2 bg-[#C9A84C] text-black rounded-full font-semibold text-sm hover:bg-[#d8b65a] transition-colors"
-                            >
-                                Fazer Upgrade
-                            </button>
-                        )}
+                        <div className="flex flex-wrap justify-end gap-2">
+                            {canManageBilling && hasSubscription && (
+                                <button
+                                    onClick={openPortal}
+                                    disabled={portalLoading}
+                                    className="px-4 py-2 bg-white/10 text-white rounded-full font-medium text-sm hover:bg-white/15 transition-colors disabled:opacity-60"
+                                >
+                                    {portalLoading ? 'Abrindo…' : 'Gerenciar assinatura'}
+                                </button>
+                            )}
+                            {canUpgradePlan && (
+                                <button
+                                    onClick={() => setShowPlanSelector(true)}
+                                    className="px-4 py-2 bg-[#C9A84C] text-black rounded-full font-semibold text-sm hover:bg-[#d8b65a] transition-colors"
+                                >
+                                    {hasSubscription ? 'Trocar de plano' : 'Fazer Upgrade'}
+                                </button>
+                            )}
+                        </div>
                     </div>
+                    {portalError && <p className="mt-3 text-sm text-red-300">{portalError}</p>}
+                    {canManageBilling && hasSubscription && (
+                        <p className="mt-3 text-xs text-white/40">Cartão, faturas, troca de plano e cancelamento ficam no portal seguro do Stripe.</p>
+                    )}
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
                         <div>

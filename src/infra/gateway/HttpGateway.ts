@@ -439,8 +439,21 @@ class HttpGateway {
         return this.request('POST', `/invites/${encodeURIComponent(token)}/accept`)
     }
 
-    async createStripeCheckout(planTier: 'STARTER' | 'PRO' | 'AGENCY'): Promise<{ sessionId: string; url: string | null }> {
-        return this.request<{ sessionId: string; url: string | null }>('POST', '/stripe/create-checkout', { planTier }, true)
+    /** Abre o checkout; quem já assina recebe o portal do Stripe para confirmar a troca de plano. */
+    async createStripeCheckout(
+        planTier: 'STARTER' | 'PRO' | 'AGENCY'
+    ): Promise<{ sessionId: string | null; url: string | null; mode: 'checkout' | 'portal' }> {
+        return this.request('POST', '/stripe/create-checkout', { planTier }, true)
+    }
+
+    /** Portal do Stripe: cartão, faturas, troca de plano e cancelamento. */
+    async openBillingPortal(): Promise<{ url: string }> {
+        return this.request('POST', '/stripe/portal', {}, true)
+    }
+
+    /** Volta do checkout/portal: sincroniza o plano na hora (sem esperar o webhook). */
+    async syncBilling(sessionId?: string | null): Promise<{ planTier: string; billingStatus: string }> {
+        return this.request('POST', '/stripe/sync', sessionId ? { sessionId } : {}, true)
     }
 }
 
