@@ -6,6 +6,7 @@ import { blockTitle, fillPlaceholders, type AcceptanceBlock } from '../../../../
 import { calculatePackagePricing, formatCents } from '../../../../shared/pricing'
 import type { AcceptanceState, Package, PackageItem, ProposalResponseType } from '../../../../shared/types'
 import { useProposalSelection } from './selection'
+import { printUrl } from '../print/printUrl'
 import { Reveal, SectionShell, whatsappHref, type BlockContext } from './shared'
 
 type Pkg = Package & { items?: PackageItem[] }
@@ -139,10 +140,10 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                             <p className="text-xs pt-1 break-all">Código de verificação: {result.hash.slice(0, 16)}</p>
                         </div>
                     )}
-                    {accepted && (
-                        <button type="button" onClick={() => window.print()} className="pp-no-print inline-flex items-center gap-2 px-5 py-2.5 rounded-xl pp-body text-sm" style={{ border: '1px solid var(--pp-border)', color: 'var(--pp-text)' }}>
-                            <Printer className="w-4 h-4" /> Imprimir ou salvar em PDF
-                        </button>
+                    {accepted && ctx.slug && (
+                        <a href={printUrl(ctx.slug)} target="_blank" rel="noreferrer" className="pp-no-print inline-flex items-center gap-2 px-5 py-2.5 rounded-xl pp-body text-sm" style={{ border: '1px solid var(--pp-border)', color: 'var(--pp-text)' }}>
+                            <Printer className="w-4 h-4" /> Baixar PDF com o comprovante
+                        </a>
                     )}
                 </motion.div>
             </SectionShell>

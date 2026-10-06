@@ -33,7 +33,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: null,
         tagline: 'Para experimentar',
         limits: { proposalsPerMonth: 3, members: 1, storageGb: 0.5, analytics: false },
-        features: ['3 propostas por mês', '1 usuário', '500 MB de arquivos', 'Marca "Feito com Lumen Deal"'],
+        features: ['3 propostas por mês', '1 usuário', '500 MB de arquivos', 'Aceite online, PDF e avisos por e-mail', 'Marca "Feito com Lumen Deal"'],
         highlighted: false,
     },
     basic: {
@@ -44,7 +44,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: 'STARTER',
         tagline: 'Para profissionais autônomos',
         limits: { proposalsPerMonth: 30, members: 1, storageGb: 5, analytics: true },
-        features: ['30 propostas por mês', '1 usuário', '5 GB de arquivos', 'Sem a marca Lumen Deal', 'Aceite online e PDF', 'Analytics de visualização'],
+        features: ['30 propostas por mês', '1 usuário', '5 GB de arquivos', 'Sem a marca Lumen Deal', 'Analytics de visualização', 'Tudo do Grátis'],
         highlighted: false,
     },
     pro: {
@@ -55,7 +55,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: 'PRO',
         tagline: 'Para pequenas empresas',
         limits: { proposalsPerMonth: -1, members: 3, storageGb: 20, analytics: true },
-        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Modelos próprios', 'Avisos por e-mail', 'Tudo do Essencial'],
+        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Modelos próprios', 'Tudo do Essencial'],
         highlighted: true,
     },
     team: {

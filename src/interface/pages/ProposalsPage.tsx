@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import ProposalForm from '../components/ProposalForm'
 import { RESPONSE_LABEL } from '../components/proposal/ResponsesPanel'
+import { printUrl } from '../components/proposal/print/printUrl'
 import StatusWorkflow from '../components/StatusWorkflow'
 import { usePlan } from '../context/PlanContext'
 import type { Proposal } from '../../shared/types'
-import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check } from 'lucide-react'
+import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check, FileDown } from 'lucide-react'
 
 const STATUS_SURFACE: Record<NonNullable<Proposal['commercialStatus']>, string> = {
     sem_resposta: 'border-white/10 hover:border-white/20',
@@ -187,6 +188,15 @@ export default function ProposalsPage() {
                                                 >
                                                     <ExternalLink className="w-3.5 h-3.5" /> Abrir
                                                 </button>
+                                                <a
+                                                    href={printUrl(proposal.slug)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Baixar PDF (com o comprovante, se aceita)"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white/5 text-white/70 rounded-lg hover:bg-white/10 transition"
+                                                >
+                                                    <FileDown className="w-3.5 h-3.5" /> PDF
+                                                </a>
                                                 <button
                                                     onClick={() => copyToClipboard(proposal.slug)}
                                                     className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition ${copiedSlug === proposal.slug ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}

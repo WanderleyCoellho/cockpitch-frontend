@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, useScroll, useSpring } from 'framer-motion'
-import { MessageCircle } from 'lucide-react'
+import { FileDown, MessageCircle } from 'lucide-react'
 import { blockTitle, type ProposalBlock } from '../../../../shared/blocks'
 import { ImageAsset } from '../public/media'
 import { ProposalThemeStyle, themeCssVars } from '../public/theme'
 import { BlockRenderer } from './BlockRenderer'
+import { useSelectionState } from './selection'
+import { printUrl } from '../print/printUrl'
 import { whatsappHref, type BlockContext } from './shared'
 
 const NAV_SKIP = new Set<ProposalBlock['type']>(['cover', 'cta'])
@@ -35,6 +37,11 @@ export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: Proposa
     // O estado do aceite muda quando o cliente responde nesta mesma visita.
     const [acceptance, setAcceptance] = useState(initialCtx.acceptance)
     const ctx: BlockContext = { ...initialCtx, acceptance, onAcceptanceChange: setAcceptance }
+    // Escolha do cliente compartilhada entre os blocos e o botão de PDF.
+    const selection = useSelectionState(ctx.packages)
+    const pdfHref = ctx.slug
+        ? printUrl(ctx.slug, selection.selectedPackageId ? { packageId: selection.selectedPackageId, optionalIds: selection.optionals[selection.selectedPackageId] ?? [] } : null)
+        : null
     const provider = ctx.provider
     const navItems = useMemo(() => blocks.filter((b) => !NAV_SKIP.has(b.type)).map((b) => ({ id: b.id, label: blockTitle(b) })), [blocks])
     const navIds = useMemo(() => navItems.map((n) => n.id), [navItems])
@@ -81,6 +88,20 @@ export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: Proposa
                         </span>
                     )}
                 </div>
+                <div className="flex items-center gap-2">
+                {pdfHref && (
+                    <a
+                        href={pdfHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Baixar PDF"
+                        aria-label="Baixar proposta em PDF"
+                        className="pp-body inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-80"
+                        style={{ border: '1px solid var(--pp-border)', color: scrolled ? 'var(--pp-text)' : undefined, background: scrolled ? undefined : 'color-mix(in srgb, var(--pp-bg) 50%, transparent)' }}
+                    >
+                        <FileDown className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
+                    </a>
+                )}
                 {acceptanceBlock ? (
                     <a
                         href={`#${acceptanceBlock.id}`}
@@ -98,6 +119,7 @@ export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: Proposa
                         Contato
                     </a>
                 )}
+                </div>
             </header>
 
             {navItems.length > 2 && (
@@ -128,14 +150,16 @@ export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: Proposa
             )}
 
             <main>
-                <BlockRenderer blocks={blocks} ctx={ctx} />
+                <BlockRenderer blocks={blocks} ctx={ctx} selection={selection} />
             </main>
 
-            <footer className="px-6 py-10 text-center" style={{ borderTop: '1px solid var(--pp-border)' }}>
-                <a href="https://deal.lumendevstudios.com" target="_blank" rel="noreferrer" className="pp-body text-[11px] tracking-wide hover:opacity-80" style={{ color: 'var(--pp-muted)', opacity: 0.6 }}>
-                    Proposta feita com Lumen Deal
-                </a>
-            </footer>
+            {!ctx.removeBranding && (
+                <footer className="px-6 py-10 text-center" style={{ borderTop: '1px solid var(--pp-border)' }}>
+                    <a href="https://deal.lumendevstudios.com" target="_blank" rel="noreferrer" className="pp-body text-[11px] tracking-wide hover:opacity-80" style={{ color: 'var(--pp-muted)', opacity: 0.6 }}>
+                        Proposta feita com Lumen Deal
+                    </a>
+                </footer>
+            )}
 
             {floatingWa && scrolled && active !== contactBlock?.id && (
                 <motion.a

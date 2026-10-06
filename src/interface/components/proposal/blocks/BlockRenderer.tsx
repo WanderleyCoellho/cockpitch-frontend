@@ -74,8 +74,10 @@ function BlockView({ block, ctx, alt, nextId, selection }: { block: ProposalBloc
     }
 }
 
-export function BlockRenderer({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: BlockContext }) {
-    const selection = useSelectionState(ctx.packages)
+export function BlockRenderer({ blocks, ctx, selection: external }: { blocks: ProposalBlock[]; ctx: BlockContext; selection?: ProposalSelection }) {
+    // A página pública passa a seleção de fora (o botão de PDF no cabeçalho precisa dela).
+    const own = useSelectionState(ctx.packages)
+    const selection = external ?? own
     const fullCtx: BlockContext = {
         ...ctx,
         acceptanceId: blocks.find((b) => b.type === 'acceptance')?.id,

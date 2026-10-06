@@ -20,6 +20,8 @@ export type BlockContext = {
     acceptance?: AcceptanceState
     /** Avisa a página quando o cliente responde (cabeçalho e botões mudam na hora). */
     onAcceptanceChange?: (state: AcceptanceState) => void
+    /** Plano sem a marca "Feito com Lumen Deal". */
+    removeBranding?: boolean
     /** Âncoras de outros blocos, preenchidas pelo renderer. */
     acceptanceId?: string
     pricingId?: string

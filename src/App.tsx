@@ -12,6 +12,7 @@ import PackagesPage from './interface/pages/PackagesPage'
 import TeamPage from './interface/pages/TeamPage'
 import InvitePage from './interface/pages/InvitePage'
 import { PrivacyPage, TermsPage } from './interface/pages/LegalPages'
+import ProposalPrintPage from './interface/pages/ProposalPrintPage'
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth()
@@ -54,6 +55,7 @@ function AppRoutes() {
             <Route path="/convite/:token" element={<InvitePage />} />
             {/* Rota pública para propostas */}
             <Route path="/p/:slug" element={<ProposalPublicPage />} />
+            <Route path="/p/:slug/print" element={<ProposalPrintPage />} />
             <Route path="/privacidade" element={<PrivacyPage />} />
             <Route path="/termos" element={<TermsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

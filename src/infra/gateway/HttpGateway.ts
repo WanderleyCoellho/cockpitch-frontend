@@ -294,7 +294,7 @@ class HttpGateway {
 
     async getPublicProposalBySlug(slug: string) {
         const result = await this.request<any>('GET', `/public/proposals/${slug}`, undefined, false)
-        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance }
+        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance, branding: result.branding }
     }
 
     async createProposal(data: any) {

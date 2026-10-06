@@ -133,6 +133,8 @@ export type Proposal = {
     packages?: Array<Package & { items?: PackageItem[] }>
     /** Estado do aceite online (só na página pública). */
     acceptance?: AcceptanceState
+    /** Página pública: false = mostra "Feito com Lumen Deal" (plano Grátis). */
+    branding?: { removeBranding: boolean }
     /** Painel: total de respostas do cliente e a mais recente. */
     responsesCount?: number
     lastResponse?: { type: ProposalResponseType; signerName: string; createdAt: string } | null
@@ -151,6 +153,15 @@ export type AcceptanceState = {
     expiresAt: string
     acceptedAt?: string
     acceptedBy?: string
+    /** O que foi aceito (sem dados pessoais além do nome). */
+    accepted?: {
+        packageId: string | null
+        optionalIds: string[]
+        packageName: string | null
+        optionals: string[]
+        totalCents: number | null
+        contentHash: string
+    }
 }
 
 export type ResponseSelection = {

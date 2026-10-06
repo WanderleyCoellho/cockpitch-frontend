@@ -2,7 +2,8 @@ import { useParams } from 'react-router-dom'
 import { sanitizeHtml } from '../../shared/sanitizeHtml'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mail, Phone, Instagram, Quote, ChevronDown, Play } from 'lucide-react'
+import { Mail, Phone, Instagram, Quote, ChevronDown, Play, FileDown } from 'lucide-react'
+import { printUrl } from '../components/proposal/print/printUrl'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { getThemeTokens, type ThemeTokens } from '../components/proposal/ThemeSelector'
 import { getEmbedUrl, ImageAsset, MediaAsset, MediaFallbackPanel } from '../components/proposal/public/media'
@@ -459,11 +460,13 @@ function ContactSection({ proposal, provider, tk }: { proposal: Proposal; provid
                     </div>
                 )}
 
-                <div className="text-center pt-8 border-t" style={{ borderColor: 'var(--pp-border)' }}>
-                    <p className="pp-body text-xs" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
-                        Proposta feita com Lumen Deal
-                    </p>
-                </div>
+                {!proposal.branding?.removeBranding && (
+                    <div className="text-center pt-8 border-t" style={{ borderColor: 'var(--pp-border)' }}>
+                        <p className="pp-body text-xs" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
+                            Proposta feita com Lumen Deal
+                        </p>
+                    </div>
+                )}
             </div>
         </section>
     )
@@ -545,6 +548,7 @@ export default function ProposalPublicPage() {
                     onPackageExpand: handlePackageExpand,
                     slug: proposal.slug,
                     acceptance: proposal.acceptance,
+                    removeBranding: proposal.branding?.removeBranding ?? false,
                 }}
             />
         )
@@ -599,10 +603,16 @@ export default function ProposalPublicPage() {
                         </span>
                     )}
                 </div>
-                <a href="#contact" className="pp-body text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
-                    style={{ color: 'var(--pp-accent)' }}>
-                    Contato
-                </a>
+                <div className="flex items-center gap-5">
+                    <a href={printUrl(proposal.slug)} target="_blank" rel="noreferrer" className="pp-body inline-flex items-center gap-1.5 text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+                        style={{ color: 'var(--pp-muted)' }}>
+                        <FileDown className="w-4 h-4" /> PDF
+                    </a>
+                    <a href="#contact" className="pp-body text-xs font-medium tracking-widest uppercase transition-opacity hover:opacity-70"
+                        style={{ color: 'var(--pp-accent)' }}>
+                        Contato
+                    </a>
+                </div>
             </header>
 
             {/* Render active sections in order */}
