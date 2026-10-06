@@ -11,13 +11,15 @@ import {
 } from './ContentBlocks'
 import { ContactBlockView, FaqBlockView, GalleryBlockView, TestimonialsBlockView } from './InteractiveBlocks'
 import { SectionShell, type BlockContext } from './shared'
+import { AcceptanceBlockView } from './AcceptanceBlock'
+import { SelectionContext, useSelectionState, type ProposalSelection } from './selection'
 
 /** Blocos que o cliente vê: visíveis e de tipo conhecido (tipos novos são ignorados, nunca quebram a página). */
 export function visibleBlocks(blocks: unknown): ProposalBlock[] {
     return Array.isArray(blocks) ? blocks.filter(isKnownBlock).filter((b) => b.visible !== false) : []
 }
 
-function BlockView({ block, ctx, alt, nextId }: { block: ProposalBlock; ctx: BlockContext; alt: boolean; nextId?: string }) {
+function BlockView({ block, ctx, alt, nextId, selection }: { block: ProposalBlock; ctx: BlockContext; alt: boolean; nextId?: string; selection: ProposalSelection }) {
     switch (block.type) {
         case 'cover':
             return <CoverBlockView block={block} ctx={ctx} nextId={nextId} />
@@ -45,6 +47,8 @@ function BlockView({ block, ctx, alt, nextId }: { block: ProposalBlock; ctx: Blo
                     sectionId={block.id}
                     title={block.title}
                     intro={block.data.intro}
+                    selection={selection}
+                    acceptanceId={ctx.acceptance?.state === 'OPEN' || ctx.preview ? ctx.acceptanceId : undefined}
                 />
             )
         case 'gallery':
@@ -63,20 +67,29 @@ function BlockView({ block, ctx, alt, nextId }: { block: ProposalBlock; ctx: Blo
             return <ContactBlockView block={block} ctx={ctx} alt={alt} />
         case 'cta':
             return <CtaBlockView block={block} ctx={ctx} />
+        case 'acceptance':
+            return <AcceptanceBlockView block={block} ctx={ctx} alt={alt} />
         default:
             return null
     }
 }
 
 export function BlockRenderer({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: BlockContext }) {
+    const selection = useSelectionState(ctx.packages)
+    const fullCtx: BlockContext = {
+        ...ctx,
+        acceptanceId: blocks.find((b) => b.type === 'acceptance')?.id,
+        pricingId: blocks.find((b) => b.type === 'pricing')?.id,
+        termsId: blocks.find((b) => b.type === 'terms')?.id,
+    }
     // Fundo alternado entre seções; a capa e a chamada para ação têm fundo próprio e não contam.
     let index = 0
     return (
-        <>
+        <SelectionContext.Provider value={selection}>
             {blocks.map((block, i) => {
                 const alt = block.type === 'cover' || block.type === 'cta' ? false : index++ % 2 === 1
-                return <BlockView key={block.id} block={block} ctx={ctx} alt={alt} nextId={blocks[i + 1]?.id} />
+                return <BlockView key={block.id} block={block} ctx={fullCtx} alt={alt} nextId={blocks[i + 1]?.id} selection={selection} />
             })}
-        </>
+        </SelectionContext.Provider>
     )
 }

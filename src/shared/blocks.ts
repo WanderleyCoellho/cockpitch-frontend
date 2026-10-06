@@ -36,6 +36,10 @@ export type ContactBlock = Base & {
     data: { message: string; showWhatsapp: boolean; showEmail: boolean; showInstagram: boolean }
 }
 export type CtaBlock = Base & { type: 'cta'; data: { headline: string; buttonLabel: string } }
+export type AcceptanceBlock = Base & {
+    type: 'acceptance'
+    data: { intro: string; allowDecline: boolean; allowChangeRequest: boolean; requireDocument: boolean }
+}
 
 export type ProposalBlock =
     | CoverBlock
@@ -50,6 +54,7 @@ export type ProposalBlock =
     | TermsBlock
     | ContactBlock
     | CtaBlock
+    | AcceptanceBlock
 
 export type BlockType = ProposalBlock['type']
 
@@ -135,6 +140,13 @@ export const BLOCK_META: { [T in BlockType]: BlockMeta<T> } = {
         defaultTitle: 'Vamos conversar?',
         single: true,
         create: () => ({ message: '', showWhatsapp: true, showEmail: true, showInstagram: true }),
+    },
+    acceptance: {
+        label: 'Aceite online',
+        help: 'O cliente escolhe o pacote, confere o total e aceita ali mesmo. Também pode pedir ajuste ou recusar. Você acompanha tudo na aba Respostas.',
+        defaultTitle: 'Aceitar proposta',
+        single: true,
+        create: () => ({ intro: '', allowDecline: true, allowChangeRequest: true, requireDocument: false }),
     },
     cta: {
         label: 'Chamada para ação',
@@ -263,6 +275,7 @@ export function legacyProposalToBlocks(proposal: Proposal, provider?: Provider |
         push('terms', 'Prazos de entrega', { body: textToHtml(provider.deliveryTimes) })
     }
 
+    push('acceptance', 'Aceitar proposta', { intro: '', allowDecline: true, allowChangeRequest: true, requireDocument: false })
     push('contact', 'Contato', { message: '', showWhatsapp: true, showEmail: true, showInstagram: true })
     return blocks
 }

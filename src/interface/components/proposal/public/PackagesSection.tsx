@@ -3,6 +3,7 @@ import { Check, ChevronDown } from 'lucide-react'
 import { calculatePackagePricing, formatCents, formatQuantity, lineTotalCents, packagePriceText } from '../../../../shared/pricing'
 import type { Package, PackageItem, Proposal, Provider } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
+import type { ProposalSelection } from '../blocks/selection'
 
 interface PackagesSectionProps {
     proposal: Pick<Proposal, 'clientName'>
@@ -15,14 +16,19 @@ interface PackagesSectionProps {
     title?: string
     eyebrow?: string
     intro?: string
+    /** Seleção compartilhada com o bloco de aceite (página em blocos). */
+    selection?: ProposalSelection | null
+    /** Âncora do bloco de aceite: o pacote ganha o botão "Escolher e aceitar". */
+    acceptanceId?: string
 }
 
-export function PackagesSection({ proposal, packages, provider, tk, onPackageExpand, sectionId = 'packages', title, eyebrow = 'Investimento', intro }: PackagesSectionProps) {
+export function PackagesSection({ proposal, packages, provider, tk, onPackageExpand, sectionId = 'packages', title, eyebrow = 'Investimento', intro, selection, acceptanceId }: PackagesSectionProps) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
     // Opcionais que o cliente marcou em cada pacote: o total é recalculado na hora, sem chamar o servidor.
     const [selectedOptionals, setSelectedOptionals] = useState<Record<string, string[]>>({})
 
     const toggleOptional = (packageId: string, itemId: string) => {
+        if (selection) return selection.toggleOptional(packageId, itemId)
         setSelectedOptionals((current) => {
             const list = current[packageId] ?? []
             return {
@@ -58,7 +64,8 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                 <div className={`grid gap-6 ${packages.length === 1 ? 'max-w-sm mx-auto' : packages.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'md:grid-cols-3'}`}>
                     {packages.map((pkg) => {
                         const isOpen = !!expanded[pkg.id]
-                        const chosen = selectedOptionals[pkg.id] ?? []
+                        const chosen = (selection ? selection.optionals : selectedOptionals)[pkg.id] ?? []
+                        const isChosen = !!acceptanceId && selection?.selectedPackageId === pkg.id
                         const hasPricing = !!pkg.pricing
                         const pricing = hasPricing
                             ? calculatePackagePricing(
@@ -94,10 +101,18 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                                     background: pkg.isHighlighted
                                         ? `linear-gradient(135deg, ${pkg.highlightColor ?? tk.accent}15 0%, ${tk.card_bg} 70%)`
                                         : tk.card_bg,
-                                    border: `1px solid ${pkg.isHighlighted ? (pkg.highlightColor ?? tk.accent) + '55' : 'var(--pp-border)'}`,
+                                    border: isChosen
+                                        ? '2px solid var(--pp-accent)'
+                                        : `1px solid ${pkg.isHighlighted ? (pkg.highlightColor ?? tk.accent) + '55' : 'var(--pp-border)'}`,
                                     boxShadow: pkg.isHighlighted ? `0 0 40px ${(pkg.highlightColor ?? tk.accent)}18` : 'none',
                                 }}
                             >
+                                {isChosen && (
+                                    <div className="absolute top-4 left-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold pp-body"
+                                        style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent, #000)' }}>
+                                        <Check className="w-3 h-3" /> Escolhido
+                                    </div>
+                                )}
                                 {/* Media Background */}
                                 {hasMedia && pkg.mediaType === 'video' ? (
                                     <video src={pkg.mediaUrl} autoPlay loop muted className="absolute inset-0 w-full h-full object-contain" />
@@ -215,7 +230,29 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                                                 </div>
                                             </div>
                                         )}
-                                        {provider?.whatsapp && (
+                                        {acceptanceId && selection && (
+                                            <a
+                                                href={`#${acceptanceId}`}
+                                                onClick={(e) => { e.stopPropagation(); selection.choosePackage(pkg.id) }}
+                                                className="mt-2 block text-center py-3 px-6 rounded-2xl text-sm font-semibold pp-body transition-all hover:opacity-90"
+                                                style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent, #000)' }}
+                                            >
+                                                {isChosen ? 'Seguir para o aceite' : 'Escolher este pacote'}
+                                            </a>
+                                        )}
+                                        {provider?.whatsapp && acceptanceId && (
+                                            <a
+                                                href={`https://wa.me/${provider.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Tenho uma dúvida sobre o ${pkg.name} da proposta para ${proposal.clientName}.`)}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="mt-2 block text-center py-2 text-xs pp-body hover:opacity-80"
+                                                style={{ color: 'var(--pp-muted)' }}
+                                            >
+                                                Tirar dúvida no WhatsApp
+                                            </a>
+                                        )}
+                                        {provider?.whatsapp && !acceptanceId && (
                                             <a
                                                 href={`https://wa.me/${provider.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(
                                                     `Olá! Tenho interesse no ${pkg.name} para ${proposal.clientName}` +

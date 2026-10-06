@@ -46,6 +46,14 @@ export function ProposalThemeStyle({ tk, smoothScroll = false }: { tk: ThemeToke
             .pp-scope .pp-rich a { color: var(--pp-accent); text-decoration: underline; }
             .pp-scope .pp-rich blockquote { border-left: 2px solid var(--pp-accent); padding-left: 1em; font-style: italic; }
             ${smoothScroll ? 'html { scroll-behavior: smooth; }' : ''}
+            @media print {
+                .pp-no-print { display: none !important; }
+                .pp-scope section { break-inside: avoid-page; min-height: 0 !important; padding-top: 2rem !important; padding-bottom: 2rem !important; }
+                .pp-scope * { animation: none !important; transition: none !important; }
+                /* Seções que ainda não "entraram" na tela (animação de rolagem) também saem na impressão. */
+                .pp-scope [style*="opacity: 0"] { opacity: 1 !important; transform: none !important; }
+                .pp-scope { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
         `}</style>
     )
 }

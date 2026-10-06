@@ -11,13 +11,14 @@ import ThemeSelector from './proposal/ThemeSelector'
 import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
 import ContentEditor from './proposal/ContentEditor'
 import { BlocksEditor, type SaveTemplateState } from './proposal/editor/BlocksEditor'
+import { ResponsesPanel } from './proposal/ResponsesPanel'
 import { TemplatePicker, blankTemplateBlocks } from './proposal/editor/TemplatePicker'
 import { getThemeTokens } from './proposal/ThemeSelector'
 import HelpTip from './help/HelpTip'
 import { legacyProposalToBlocks, type ProposalBlock } from '../../shared/blocks'
 import { useAuth } from '../context/AuthContext'
 import { usePlan } from '../context/PlanContext'
-import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check, Pencil, LayoutPanelTop, Wand2, ArrowLeft } from 'lucide-react'
+import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check, Pencil, LayoutPanelTop, Wand2, ArrowLeft, Inbox } from 'lucide-react'
 
 type ProposalFormProps = {
     proposal?: Proposal | null
@@ -26,7 +27,7 @@ type ProposalFormProps = {
     onSuccess?: () => void
 }
 
-type Tab = 'info' | 'packages' | 'page' | 'media' | 'visual' | 'content'
+type Tab = 'info' | 'packages' | 'page' | 'media' | 'visual' | 'content' | 'responses'
 
 function isLikelyVideoUrl(url: string): boolean {
     return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
@@ -252,6 +253,10 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
             { id: 'visual' as Tab, label: 'Visual', Icon: Palette },
         ]
 
+    if (proposal) TAB_CONFIG.push({ id: 'responses' as Tab, label: proposal.responsesCount ? `Respostas (${proposal.responsesCount})` : 'Respostas', Icon: Inbox })
+    const isClosed = String(proposal?.status ?? '').toUpperCase() === 'FECHADA'
+    const acceptedResponse = proposal?.lastResponse?.type === 'ACCEPTED' ? proposal.lastResponse : null
+
     const pickTemplate = (template: ProposalTemplate | null) => {
         setBlocks(template ? structuredClone(template.blocks) : blankTemplateBlocks())
         setTemplateId(template?.id)
@@ -368,6 +373,22 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                 Converter esta proposta
                             </button>
                         </div>
+                    )}
+
+                    {isClosed && acceptedResponse && tab !== 'responses' && (
+                        <div className="flex items-start gap-3 p-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06]">
+                            <Check className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-white/75">
+                                <strong className="text-white">{acceptedResponse.signerName}</strong> aceitou esta proposta em {new Date(acceptedResponse.createdAt).toLocaleDateString('pt-BR')}.
+                                {' '}Mudanças feitas agora não alteram o que foi aceito: o comprovante guarda a versão anterior. Para o cliente aceitar uma nova versão, reabra a proposta na aba{' '}
+                                <button type="button" onClick={() => setTab('responses')} className="text-[#C9A84C] underline">Respostas</button>.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* ── TAB: RESPOSTAS ── */}
+                    {tab === 'responses' && proposal && (
+                        <ResponsesPanel proposalId={proposal.id} isClosed={isClosed} onChanged={onSuccess} />
                     )}
 
                     {/* ── TAB: PÁGINA (blocos) ── */}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { PlaceholderContext } from '../../../../shared/blocks'
-import type { Package, PackageItem, Provider } from '../../../../shared/types'
+import type { AcceptanceState, Package, PackageItem, Provider } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
 
 export type BlockContext = {
@@ -15,6 +15,15 @@ export type BlockContext = {
     /** Pré-visualização no editor: capa mais baixa, sem efeitos de rolagem da janela. */
     preview?: boolean
     onPackageExpand?: (packageId: string) => void
+    /** Link público (para enviar a resposta do cliente). */
+    slug?: string
+    acceptance?: AcceptanceState
+    /** Avisa a página quando o cliente responde (cabeçalho e botões mudam na hora). */
+    onAcceptanceChange?: (state: AcceptanceState) => void
+    /** Âncoras de outros blocos, preenchidas pelo renderer. */
+    acceptanceId?: string
+    pricingId?: string
+    termsId?: string
 }
 
 /** Entrada suave ao rolar (respeita "reduzir movimento" do sistema). */

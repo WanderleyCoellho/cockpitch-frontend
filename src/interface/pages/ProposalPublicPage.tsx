@@ -541,8 +541,10 @@ export default function ProposalPublicPage() {
                     packages,
                     tk,
                     placeholders: { cliente: proposal.clientName, empresa: provider.name },
-                    validUntil,
+                    validUntil: proposal.acceptance?.expiresAt ? new Date(proposal.acceptance.expiresAt) : validUntil,
                     onPackageExpand: handlePackageExpand,
+                    slug: proposal.slug,
+                    acceptance: proposal.acceptance,
                 }}
             />
         )

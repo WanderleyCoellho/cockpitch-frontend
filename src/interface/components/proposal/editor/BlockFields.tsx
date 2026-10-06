@@ -232,6 +232,23 @@ export function BlockFields({ block, onChange }: { block: ProposalBlock; onChang
                 </div>
             )
         }
+        case 'acceptance': {
+            const set = patcher({ block, onChange })
+            return (
+                <div className="space-y-4">
+                    <Field label="Texto antes do formulário (opcional)" helpKey="blocks.acceptance">
+                        <TextArea value={block.data.intro} maxLength={1000} rows={2} placeholder="Ex.: Gostou? Escolha o pacote e aceite online." onChange={(intro) => set({ intro })} />
+                    </Field>
+                    <Field label="O cliente pode" helpKey="blocks.acceptanceOptions">
+                        <div className="space-y-2.5">
+                            <Toggle checked={block.data.allowChangeRequest} onChange={(allowChangeRequest) => set({ allowChangeRequest })} label="Pedir ajuste" />
+                            <Toggle checked={block.data.allowDecline} onChange={(allowDecline) => set({ allowDecline })} label="Recusar" />
+                            <Toggle checked={block.data.requireDocument} onChange={(requireDocument) => set({ requireDocument })} label="Exigir CPF/CNPJ para aceitar" />
+                        </div>
+                    </Field>
+                </div>
+            )
+        }
         case 'cta': {
             const set = patcher({ block, onChange })
             return (

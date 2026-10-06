@@ -131,11 +131,48 @@ export type Proposal = {
     sectionsConfig?: Record<string, any> | null
     videoSoundEnabled?: boolean
     packages?: Array<Package & { items?: PackageItem[] }>
+    /** Estado do aceite online (só na página pública). */
+    acceptance?: AcceptanceState
+    /** Painel: total de respostas do cliente e a mais recente. */
+    responsesCount?: number
+    lastResponse?: { type: ProposalResponseType; signerName: string; createdAt: string } | null
     /** Proposta em blocos; null = layout legado. */
     blocks?: import('./blocks').ProposalBlock[] | null
     templateId?: string | null
     createdAt: string
     updatedAt: string
+}
+
+export type ProposalResponseType = 'ACCEPTED' | 'DECLINED' | 'CHANGE_REQUESTED'
+
+export type AcceptanceState = {
+    enabled: boolean
+    state: 'OPEN' | 'ACCEPTED' | 'EXPIRED' | 'CLOSED'
+    expiresAt: string
+    acceptedAt?: string
+    acceptedBy?: string
+}
+
+export type ResponseSelection = {
+    packageId: string
+    packageName: string
+    optionals: Array<{ id: string; name: string; cents: number }>
+    pricing: { onRequest: boolean; baseCents: number; optionalsCents: number; discountCents: number; totalCents: number }
+}
+
+export type ProposalResponse = {
+    id: string
+    type: ProposalResponseType
+    signerName: string
+    signerEmail: string
+    signerDocument?: string | null
+    message?: string | null
+    selection?: ResponseSelection | null
+    totalCents?: number | null
+    contentHash: string
+    ip?: string | null
+    userAgent?: string | null
+    createdAt: string
 }
 
 export type ProposalTemplate = {

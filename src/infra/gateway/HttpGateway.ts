@@ -3,7 +3,7 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
-import type { ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
 import type { ProposalBlock } from '../../shared/blocks'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -271,7 +271,7 @@ class HttpGateway {
 
     async getPublicProposalBySlug(slug: string) {
         const result = await this.request<any>('GET', `/public/proposals/${slug}`, undefined, false)
-        return normalizeProposal(result.proposal)
+        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance }
     }
 
     async createProposal(data: any) {
@@ -282,6 +282,33 @@ class HttpGateway {
     async updateProposal(proposalId: string, data: any) {
         const result = await this.request<any>('PATCH', `/proposals/${proposalId}`, data)
         return normalizeProposal(result.proposal)
+    }
+
+    // ── Aceite online ──
+    async submitProposalResponse(
+        slug: string,
+        body: {
+            type: ProposalResponseType
+            signerName: string
+            signerEmail: string
+            signerDocument?: string
+            message?: string
+            packageId?: string
+            optionalItemIds?: string[]
+            agreeTerms?: boolean
+        }
+    ): Promise<Pick<ProposalResponse, 'id' | 'type' | 'createdAt' | 'totalCents' | 'selection' | 'contentHash'>> {
+        const result = await this.request<{ response: ProposalResponse }>('POST', `/public/proposals/${encodeURIComponent(slug)}/responses`, body, false)
+        return result.response
+    }
+
+    async listProposalResponses(proposalId: string): Promise<ProposalResponse[]> {
+        const result = await this.request<{ responses: ProposalResponse[] }>('GET', `/proposals/${proposalId}/responses`)
+        return result.responses
+    }
+
+    async reopenProposal(proposalId: string) {
+        return this.request<{ proposal: { id: string; status: string; commercialStatus: string } }>('POST', `/proposals/${proposalId}/reopen`)
     }
 
     // ── Modelos de proposta ──

@@ -58,7 +58,7 @@ describe('blocos da proposta', () => {
         } as unknown as Proposal
 
         const blocks = legacyProposalToBlocks(proposal, provider)
-        expect(blocks.map((b) => b.type)).toEqual(['cover', 'about', 'gallery', 'pricing', 'testimonials', 'terms', 'contact'])
+        expect(blocks.map((b) => b.type)).toEqual(['cover', 'about', 'gallery', 'pricing', 'testimonials', 'terms', 'acceptance', 'contact'])
         const cover = blocks[0] as Extract<typeof blocks[number], { type: 'cover' }>
         expect(cover.data.mediaUrl).toContain('/media/public/')
         const gallery = blocks[2] as Extract<typeof blocks[number], { type: 'gallery' }>

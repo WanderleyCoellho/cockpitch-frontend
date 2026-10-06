@@ -125,4 +125,24 @@ export const HELP: Record<string, HelpEntry> = {
         title: 'Converter para blocos',
         body: 'Monta a proposta no novo editor usando seus textos, depoimentos e mídias atuais. Nada muda para o cliente até você clicar em Salvar.',
     },
+    'blocks.acceptance': {
+        area: 'Propostas',
+        title: 'Aceite online',
+        body: 'O cliente escolhe o pacote, informa nome e e-mail e aceita. Guardamos data, hora, IP e o conteúdo exato da proposta como comprovante. A proposta fica marcada como aceita.',
+    },
+    'blocks.acceptanceOptions': {
+        area: 'Propostas',
+        title: 'Opções do aceite',
+        body: 'Pedir ajuste e recusar ajudam a entender o que travou a venda. Exigir CPF/CNPJ é útil quando o aceite vira contrato.',
+    },
+    'proposal.responses': {
+        area: 'Propostas',
+        title: 'Respostas do cliente',
+        body: 'Cada aceite, pedido de ajuste ou recusa feito pelo link fica registrado aqui com data, IP e o valor escolhido. Nada é apagado, nem ao reabrir a proposta.',
+    },
+    'proposal.reopen': {
+        area: 'Propostas',
+        title: 'Reabrir proposta',
+        body: 'Depois do aceite, o link para de receber respostas. Reabra para o cliente poder aceitar de novo, por exemplo após um ajuste. O histórico continua guardado.',
+    },
 }

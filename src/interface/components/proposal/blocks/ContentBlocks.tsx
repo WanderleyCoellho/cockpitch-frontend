@@ -237,8 +237,11 @@ export function TermsBlockView({ block, ctx, alt }: { block: TermsBlock; ctx: Bl
 export function CtaBlockView({ block, ctx }: { block: CtaBlock; ctx: BlockContext }) {
     const headline = fillPlaceholders(block.data.headline, ctx.placeholders)
     const label = block.data.buttonLabel?.trim() || 'Quero fechar'
-    const wa = whatsappHref(ctx.provider, `Olá! Vi a proposta para ${ctx.clientName} e quero seguir.`)
-    const href = wa ?? (ctx.provider?.email ? `mailto:${ctx.provider.email}?subject=${encodeURIComponent(`Proposta — ${ctx.clientName}`)}` : '#contact')
+    const toAcceptance = !!ctx.acceptanceId && (ctx.preview || ctx.acceptance?.state === 'OPEN')
+    const wa = toAcceptance ? null : whatsappHref(ctx.provider, `Olá! Vi a proposta para ${ctx.clientName} e quero seguir.`)
+    const href = toAcceptance
+        ? `#${ctx.acceptanceId}`
+        : wa ?? (ctx.provider?.email ? `mailto:${ctx.provider.email}?subject=${encodeURIComponent(`Proposta — ${ctx.clientName}`)}` : '#contact')
 
     return (
         <section id={block.id} data-section={block.id} className="px-6 py-20 md:py-24" style={{ background: 'var(--pp-bg)' }}>
@@ -258,7 +261,7 @@ export function CtaBlockView({ block, ctx }: { block: CtaBlock; ctx: BlockContex
                         className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl pp-body text-sm font-semibold transition-transform hover:scale-[1.03] active:scale-[0.98]"
                         style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent)' }}
                     >
-                        {wa ? <MessageCircle className="w-4 h-4" /> : <Mail className="w-4 h-4" />} {label}
+                        {toAcceptance ? <Check className="w-4 h-4" /> : wa ? <MessageCircle className="w-4 h-4" /> : <Mail className="w-4 h-4" />} {label}
                     </a>
                 </div>
             </Reveal>

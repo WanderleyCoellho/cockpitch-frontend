@@ -31,7 +31,10 @@ function useActiveSection(ids: string[]) {
 }
 
 /** Página pública de uma proposta em blocos: cabeçalho, progresso de leitura, menu de seções e contato flutuante. */
-export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: BlockContext }) {
+export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: ProposalBlock[]; ctx: BlockContext }) {
+    // O estado do aceite muda quando o cliente responde nesta mesma visita.
+    const [acceptance, setAcceptance] = useState(initialCtx.acceptance)
+    const ctx: BlockContext = { ...initialCtx, acceptance, onAcceptanceChange: setAcceptance }
     const provider = ctx.provider
     const navItems = useMemo(() => blocks.filter((b) => !NAV_SKIP.has(b.type)).map((b) => ({ id: b.id, label: blockTitle(b) })), [blocks])
     const navIds = useMemo(() => navItems.map((n) => n.id), [navItems])
@@ -39,6 +42,7 @@ export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ct
     const { scrollYProgress } = useScroll()
     const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 })
     const contactBlock = blocks.find((b) => b.type === 'contact')
+    const acceptanceBlock = ctx.acceptance?.state === 'OPEN' ? blocks.find((b) => b.type === 'acceptance') : undefined
     const floatingWa = whatsappHref(provider, `Olá! Estou vendo a proposta para ${ctx.clientName} e tenho uma dúvida.`)
 
     const [scrolled, setScrolled] = useState(false)
@@ -53,10 +57,10 @@ export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ct
         <div className="pp-scope min-h-screen" style={{ background: 'var(--pp-bg)', color: 'var(--pp-text)', ...themeCssVars(ctx.tk) }}>
             <ProposalThemeStyle tk={ctx.tk} smoothScroll />
 
-            <motion.div className="fixed top-0 left-0 right-0 h-[3px] z-[60] origin-left" style={{ scaleX: progress, background: 'var(--pp-accent)' }} aria-hidden />
+            <motion.div className="pp-no-print fixed top-0 left-0 right-0 h-[3px] z-[60] origin-left" style={{ scaleX: progress, background: 'var(--pp-accent)' }} aria-hidden />
 
             <header
-                className="fixed top-0 left-0 right-0 z-50 px-6 py-3.5 flex items-center justify-between transition-colors duration-300"
+                className="pp-no-print fixed top-0 left-0 right-0 z-50 px-6 py-3.5 flex items-center justify-between transition-colors duration-300"
                 style={{
                     background: scrolled ? `color-mix(in srgb, ${ctx.tk.bg} 92%, transparent)` : 'transparent',
                     borderBottom: scrolled ? '1px solid var(--pp-border)' : '1px solid transparent',
@@ -77,7 +81,15 @@ export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ct
                         </span>
                     )}
                 </div>
-                {contactBlock && (
+                {acceptanceBlock ? (
+                    <a
+                        href={`#${acceptanceBlock.id}`}
+                        className="pp-body text-xs font-semibold tracking-wide px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+                        style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent)' }}
+                    >
+                        Aceitar proposta
+                    </a>
+                ) : contactBlock && (
                     <a
                         href={`#${contactBlock.id}`}
                         className="pp-body text-xs font-semibold tracking-widest uppercase px-4 py-2 rounded-full transition-opacity hover:opacity-80"
@@ -89,7 +101,7 @@ export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ct
             </header>
 
             {navItems.length > 2 && (
-                <nav className="hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-40 flex-col gap-3" aria-label="Seções da proposta">
+                <nav className="pp-no-print hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-40 flex-col gap-3" aria-label="Seções da proposta">
                     {navItems.map((item) => {
                         const isActive = active === item.id
                         return (
@@ -132,7 +144,7 @@ export function BlockProposalPage({ blocks, ctx }: { blocks: ProposalBlock[]; ct
                     rel="noreferrer"
                     initial={{ opacity: 0, scale: 0.8, y: 12 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className="fixed bottom-5 right-5 z-50 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full shadow-xl pp-body text-sm font-semibold"
+                    className="pp-no-print fixed bottom-5 right-5 z-50 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full shadow-xl pp-body text-sm font-semibold"
                     style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent)' }}
                     aria-label="Tirar dúvida pelo WhatsApp"
                 >

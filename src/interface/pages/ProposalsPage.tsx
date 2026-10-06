@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import ProposalForm from '../components/ProposalForm'
+import { RESPONSE_LABEL } from '../components/proposal/ResponsesPanel'
 import StatusWorkflow from '../components/StatusWorkflow'
 import { usePlan } from '../context/PlanContext'
 import type { Proposal } from '../../shared/types'
@@ -162,6 +163,14 @@ export default function ProposalsPage() {
                                                     {proposal.theme && (
                                                         <span className="text-[10px] font-medium tracking-wide px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">
                                                             {proposal.theme.replace('_', ' ')}
+                                                        </span>
+                                                    )}
+                                                    {proposal.lastResponse && (
+                                                        <span
+                                                            title={`${RESPONSE_LABEL[proposal.lastResponse.type]} por ${proposal.lastResponse.signerName} em ${new Date(proposal.lastResponse.createdAt).toLocaleString('pt-BR')}`}
+                                                            className={`text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full border ${proposal.lastResponse.type === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25' : proposal.lastResponse.type === 'DECLINED' ? 'bg-red-500/10 text-red-300 border-red-500/25' : 'bg-amber-500/10 text-amber-200 border-amber-500/25'}`}
+                                                        >
+                                                            {RESPONSE_LABEL[proposal.lastResponse.type]} · {proposal.lastResponse.signerName.split(' ')[0]}
                                                         </span>
                                                     )}
                                                 </div>
