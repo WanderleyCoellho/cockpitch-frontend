@@ -131,6 +131,9 @@ export type Proposal = {
     sectionsConfig?: Record<string, any> | null
     videoSoundEnabled?: boolean
     packages?: Array<Package & { items?: PackageItem[] }>
+    /** Proposta em blocos; null = layout legado. */
+    blocks?: import('./blocks').ProposalBlock[] | null
+    templateId?: string | null
     createdAt: string
     updatedAt: string
 }
