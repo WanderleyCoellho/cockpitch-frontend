@@ -138,6 +138,19 @@ export type Proposal = {
     updatedAt: string
 }
 
+export type ProposalTemplate = {
+    id: string
+    /** true = modelo pronto do Lumen Deal (ids sys-*); false = modelo salvo pela empresa. */
+    system: boolean
+    name: string
+    description?: string | null
+    segment: string
+    theme?: string | null
+    themeCustom?: ThemeCustom | null
+    blocks: import('./blocks').ProposalBlock[]
+    createdAt?: string
+}
+
 export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER'
 export type PlanTier = 'FREE' | 'STARTER' | 'PRO' | 'AGENCY'
 

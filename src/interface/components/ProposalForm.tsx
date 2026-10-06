@@ -6,11 +6,18 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { ProposalSchema, type ProposalFormData } from '../../shared/schemas'
 import { slugify } from '../../shared/utils'
-import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ThemeCustom } from '../../shared/types'
+import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ProposalTemplate, ThemeCustom } from '../../shared/types'
 import ThemeSelector from './proposal/ThemeSelector'
 import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
 import ContentEditor from './proposal/ContentEditor'
-import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check, Pencil } from 'lucide-react'
+import { BlocksEditor, type SaveTemplateState } from './proposal/editor/BlocksEditor'
+import { TemplatePicker, blankTemplateBlocks } from './proposal/editor/TemplatePicker'
+import { getThemeTokens } from './proposal/ThemeSelector'
+import HelpTip from './help/HelpTip'
+import { legacyProposalToBlocks, type ProposalBlock } from '../../shared/blocks'
+import { useAuth } from '../context/AuthContext'
+import { usePlan } from '../context/PlanContext'
+import { Upload, X, Film, Image, Info, Package as PackageIcon, Layers, Palette, AlertTriangle, ExternalLink, Star, Trash2, Check, Pencil, LayoutPanelTop, Wand2, ArrowLeft } from 'lucide-react'
 
 type ProposalFormProps = {
     proposal?: Proposal | null
@@ -19,7 +26,7 @@ type ProposalFormProps = {
     onSuccess?: () => void
 }
 
-type Tab = 'info' | 'packages' | 'media' | 'visual' | 'content'
+type Tab = 'info' | 'packages' | 'page' | 'media' | 'visual' | 'content'
 
 function isLikelyVideoUrl(url: string): boolean {
     return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
@@ -63,6 +70,13 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         proposal?.sectionsConfig ?? {}
     );
     const [confirmDelete, setConfirmDelete] = useState(false)
+    // Proposta em blocos (null = layout legado). Proposta nova começa escolhendo um modelo.
+    const [blocks, setBlocks] = useState<ProposalBlock[] | null>(Array.isArray(proposal?.blocks) ? proposal!.blocks : null)
+    const [templateId, setTemplateId] = useState<string | undefined>(undefined)
+    const [step, setStep] = useState<'template' | 'form'>(proposal ? 'form' : 'template')
+    const blocksMode = blocks !== null
+    const { activeWorkspace } = useAuth()
+    const { entitlements } = usePlan()
 
     const { data: provider } = useQuery<Provider | null>({
         queryKey: ['provider', providerId],
@@ -121,6 +135,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 themeCustom: Object.keys(themeCustom).length ? themeCustom : null,
                 sections,
                 sectionsConfig,
+                ...(blocks ? { blocks, templateId } : {}),
             }),
         onSuccess: () => {
             onSuccess?.()
@@ -138,6 +153,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 themeCustom: Object.keys(themeCustom).length ? themeCustom : null,
                 sections,
                 sectionsConfig,
+                ...(blocks ? { blocks } : {}),
             }),
         onSuccess: () => {
             onSuccess?.()
@@ -199,7 +215,17 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         }
     }
 
+    // Erro de validação num campo de outra aba: leva o usuário até ele em vez de "não acontecer nada".
+    const [invalidMessage, setInvalidMessage] = useState<string | null>(null)
+    const FIELD_NAMES: Record<string, string> = { clientName: 'nome do cliente', slug: 'link público', validityDays: 'validade', serviceDate: 'data do serviço' }
+    const onInvalid = (formErrors: Record<string, unknown>) => {
+        const fields = Object.keys(formErrors)
+        if (fields.some((field) => field in FIELD_NAMES)) setTab('info')
+        setInvalidMessage(`Revise: ${fields.map((field) => FIELD_NAMES[field] ?? field).join(', ')}.`)
+    }
+
     const onSubmit = async (data: ProposalFormData) => {
+        setInvalidMessage(null)
         try {
             if (proposal) {
                 await updateMutation.mutateAsync(data)
@@ -211,17 +237,68 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         }
     }
 
-    const TAB_CONFIG = [
-        { id: 'info' as Tab, label: 'Informações', Icon: Info },
-        { id: 'packages' as Tab, label: 'Pacotes', Icon: PackageIcon },
-        { id: 'media' as Tab, label: 'Mídias', Icon: Layers },
-        { id: 'content' as Tab, label: 'Conteúdo', Icon: Pencil },
-        { id: 'visual' as Tab, label: 'Visual', Icon: Palette },
-    ]
+    const TAB_CONFIG = blocksMode
+        ? [
+            { id: 'info' as Tab, label: 'Informações', Icon: Info },
+            { id: 'packages' as Tab, label: 'Pacotes', Icon: PackageIcon },
+            { id: 'page' as Tab, label: 'Página', Icon: LayoutPanelTop },
+            { id: 'visual' as Tab, label: 'Visual', Icon: Palette },
+        ]
+        : [
+            { id: 'info' as Tab, label: 'Informações', Icon: Info },
+            { id: 'packages' as Tab, label: 'Pacotes', Icon: PackageIcon },
+            { id: 'media' as Tab, label: 'Mídias', Icon: Layers },
+            { id: 'content' as Tab, label: 'Conteúdo', Icon: Pencil },
+            { id: 'visual' as Tab, label: 'Visual', Icon: Palette },
+        ]
+
+    const pickTemplate = (template: ProposalTemplate | null) => {
+        setBlocks(template ? structuredClone(template.blocks) : blankTemplateBlocks())
+        setTemplateId(template?.id)
+        if (template?.theme) setTheme(template.theme)
+        if (template?.themeCustom) setThemeCustom(template.themeCustom)
+        setStep('form')
+        setTab('info')
+    }
+
+    const convertLegacy = () => {
+        if (!proposal) return
+        setBlocks(legacyProposalToBlocks(proposal, provider))
+        setTab('page')
+    }
+
+    const selectedPackageIds = watch('packageIds') ?? []
+    const clientNameValue = watch('clientName') || 'Nome do cliente'
+    const previewCtx = {
+        clientName: clientNameValue,
+        provider,
+        packages: packages.filter((pkg) => selectedPackageIds.includes(pkg.id)),
+        tk: getThemeTokens(theme, themeCustom),
+        placeholders: { cliente: clientNameValue, empresa: provider?.name ?? activeWorkspace?.name ?? 'Sua empresa' },
+        validUntil: new Date(Date.now() + (Number(watch('validityDays')) || 30) * 24 * 60 * 60 * 1000),
+    }
+
+    const canSaveTemplate = !!entitlements?.customTemplates && activeWorkspace?.role !== 'MEMBER'
+    const saveTemplate: SaveTemplateState = {
+        allowed: canSaveTemplate,
+        reason: !entitlements?.customTemplates
+            ? 'Modelos próprios estão disponíveis a partir do plano Profissional.'
+            : 'Só donos e administradores da empresa podem salvar modelos.',
+        onSave: async (name) => {
+            await httpGateway.createTemplate({
+                name,
+                blocks: blocks ?? [],
+                theme,
+                themeCustom: Object.keys(themeCustom).length ? themeCustom : null,
+            })
+        },
+    }
+
+    const mutationError = (createMutation.error ?? updateMutation.error) as Error | null
 
     return (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-4xl bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-[0_32px_96px_rgba(0,0,0,0.7)] max-h-[90vh] overflow-y-auto text-white">
+            <div className={`w-full ${tab === 'page' && step === 'form' ? 'max-w-7xl' : step === 'template' ? 'max-w-5xl' : 'max-w-4xl'} bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-[0_32px_96px_rgba(0,0,0,0.7)] max-h-[90vh] overflow-y-auto text-white`}>
                 {/* Header */}
                 <div className="sticky top-0 z-10 bg-[#0F0F0F]/95 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
                     <div>
@@ -242,8 +319,15 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                     </button>
                 </div>
 
+                {step === 'template' && (
+                    <div className="p-6">
+                        <TemplatePicker segment={activeWorkspace?.segment} canManage={activeWorkspace?.role !== 'MEMBER'} onPick={pickTemplate} />
+                    </div>
+                )}
+
+                {step === 'form' && (<>
                 {/* Tabs */}
-                <div className="flex border-b border-white/8 px-6 gap-1">
+                <div className="flex border-b border-white/8 px-6 gap-1 overflow-x-auto">
                     {TAB_CONFIG.map(({ id, label, Icon }) => (
                         <button
                             key={id}
@@ -260,10 +344,36 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="p-6 space-y-6">
                     <input type="hidden" {...register('heroVideoUrl')} />
                     <input type="hidden" {...register('weddingPhotoUrl')} />
-                    <input type="hidden" {...register('sectionsConfig')} />
+
+                    {!proposal && blocksMode && tab === 'info' && (
+                        <button type="button" onClick={() => setStep('template')} className="inline-flex items-center gap-1.5 text-xs text-white/45 hover:text-white">
+                            <ArrowLeft className="w-3.5 h-3.5" /> Trocar modelo
+                        </button>
+                    )}
+
+                    {proposal && !blocksMode && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-[#C9A84C]/30 bg-[#C9A84C]/[0.06]">
+                            <Wand2 className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
+                            <div className="flex-1">
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-medium text-white">Novo editor em blocos</p>
+                                    <HelpTip helpKey="blocks.convert" />
+                                </div>
+                                <p className="text-xs text-white/50 mt-0.5">Monte a página com capa, escopo, FAQ, galeria e mais, com pré-visualização ao vivo.</p>
+                            </div>
+                            <button type="button" onClick={convertLegacy} className="px-4 py-2 rounded-xl bg-[#C9A84C] text-black text-xs font-semibold hover:bg-[#d8b65a]">
+                                Converter esta proposta
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ── TAB: PÁGINA (blocos) ── */}
+                    {tab === 'page' && blocks && (
+                        <BlocksEditor blocks={blocks} onChange={setBlocks} previewCtx={previewCtx} saveTemplate={saveTemplate} />
+                    )}
 
                     {/* ── TAB: INFORMAÇÕES ── */}
                     {tab === 'info' && (
@@ -274,7 +384,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                     <label className="block text-xs font-medium tracking-widest uppercase text-white/55 mb-2">Nome do Cliente *</label>
                                     <input
                                         type="text"
-                                        placeholder="Ex.: João & Maria"
+                                        placeholder="Ex.: Mariana Costa ou Empresa X"
                                         className="w-full px-4 py-3 border border-white/12 rounded-xl bg-white/4 text-white placeholder-white/20 focus:outline-none focus:border-[#C9A84C]/50 focus:bg-white/6 transition-all"
                                         {...register('clientName')}
                                         onBlur={handleClientNameChange}
@@ -317,7 +427,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                             {/* Data + Validade */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium tracking-widest uppercase text-white/55 mb-2">Data do Evento</label>
+                                    <label className="block text-xs font-medium tracking-widest uppercase text-white/55 mb-2">Data do serviço (opcional)</label>
                                     <input
                                         type="date"
                                         className="w-full px-4 py-3 border border-white/12 rounded-xl bg-white/4 text-white focus:outline-none focus:border-[#C9A84C]/50 transition-all"
@@ -659,7 +769,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                     onCustomChange={(key, value) => setThemeCustom((prev) => ({ ...prev, [key]: value }))}
                                 />
                             </div>
-                            <div className="border-t border-white/10 pt-6">
+                            {!blocksMode && <div className="border-t border-white/10 pt-6">
                                 <h3 className="text-base font-semibold text-white mb-1">Seções da Proposta</h3>
                                 <p className="text-xs text-white/40 mb-4">Controle quais seções aparecem e em que ordem</p>
                                 <SectionsEditor
@@ -667,12 +777,22 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                     onChange={setSections}
                                     sectionsConfig={watch('sectionsConfig')}
                                 />
-                            </div>
+                            </div>}
                         </div>
                     )}
 
                     {/* ── AÇÕES ── */}
                     <div className="border-t border-white/8 pt-5">
+                        {invalidMessage && (
+                            <div className="mb-4 flex items-center gap-2 p-3 rounded-xl border border-amber-500/25 bg-amber-500/8 text-sm text-amber-200">
+                                <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {invalidMessage}
+                            </div>
+                        )}
+                        {mutationError && (
+                            <div className="mb-4 flex items-center gap-2 p-3 rounded-xl border border-red-500/25 bg-red-500/8 text-sm text-red-300">
+                                <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {mutationError.message}
+                            </div>
+                        )}
                         {/* Confirm delete inline */}
                         {confirmDelete && (
                             <div className="mb-4 flex items-center gap-3 p-4 rounded-xl border border-red-500/25 bg-red-500/8">
@@ -734,6 +854,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                         </div>
                     </div>
                 </form>
+                </>)}
             </div>
         </div>
     )

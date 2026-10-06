@@ -75,4 +75,54 @@ export const HELP: Record<string, HelpEntry> = {
         title: 'Limites do plano',
         body: 'Cada plano tem um número de propostas por mês e de pessoas na equipe. O contador de propostas zera no dia 1 de cada mês.',
     },
+    'proposal.template': {
+        area: 'Propostas',
+        title: 'Modelo de proposta',
+        body: 'Ponto de partida com seções e textos prontos para o seu ramo. Tudo pode ser editado depois. Mudar o modelo mais tarde não altera propostas já enviadas.',
+    },
+    'blocks.editor': {
+        area: 'Propostas',
+        title: 'Página em blocos',
+        body: 'A proposta é montada em blocos (capa, escopo, preços, FAQ…). Arraste para reordenar, use o olho para ocultar sem apagar e clique no bloco para editar o conteúdo.',
+    },
+    'blocks.placeholders': {
+        area: 'Propostas',
+        title: 'Textos automáticos',
+        body: 'Escreva {cliente} e {empresa} em qualquer texto: na página o cliente vê o nome dele e o da sua empresa. Assim um modelo serve para todos os clientes.',
+    },
+    'blocks.title': {
+        area: 'Propostas',
+        title: 'Título da seção',
+        body: 'Aparece em destaque no topo do bloco e no menu lateral da proposta. Deixe vazio para usar o título padrão do bloco.',
+    },
+    'blocks.media': {
+        area: 'Propostas',
+        title: 'Imagens e vídeos',
+        body: 'Envie arquivos do seu computador ou celular (JPG, PNG, WEBP, MP4). Por segurança, a proposta só exibe mídias enviadas por aqui, não links de outros sites.',
+    },
+    'blocks.richText': {
+        area: 'Propostas',
+        title: 'Texto formatado',
+        body: 'Use os botões para negrito, itálico e listas. Cole texto sem medo: formatações estranhas e códigos são removidos automaticamente.',
+    },
+    'blocks.pricing': {
+        area: 'Propostas',
+        title: 'Bloco de preços',
+        body: 'Mostra os pacotes marcados na aba Pacotes, com total calculado. O cliente liga e desliga os opcionais e vê o valor final na hora.',
+    },
+    'blocks.contact': {
+        area: 'Propostas',
+        title: 'Botões de contato',
+        body: 'WhatsApp, e-mail e Instagram vêm do perfil da empresa. Se algum não aparecer, preencha-o no perfil.',
+    },
+    'blocks.saveTemplate': {
+        area: 'Propostas',
+        title: 'Salvar como modelo',
+        body: 'Guarda os blocos e o tema desta proposta para reutilizar nas próximas. Os pacotes e o nome do cliente não entram no modelo. Disponível a partir do plano Profissional.',
+    },
+    'blocks.convert': {
+        area: 'Propostas',
+        title: 'Converter para blocos',
+        body: 'Monta a proposta no novo editor usando seus textos, depoimentos e mídias atuais. Nada muda para o cliente até você clicar em Salvar.',
+    },
 }

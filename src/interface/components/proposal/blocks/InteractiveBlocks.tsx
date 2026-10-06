@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as Accordion from '@radix-ui/react-accordion'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, ChevronLeft, ChevronRight, Instagram, Mail, MessageCircle, Play, Quote, X } from 'lucide-react'
@@ -37,9 +38,10 @@ function Lightbox({ items, index, onClose, onMove }: {
     }, [onClose, onMove])
 
     const item = items[index]
-    return (
+    // Portal: fora de qualquer contexto de empilhamento/zoom da página (ex.: pré-visualização do editor).
+    return createPortal(
         <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -48,15 +50,15 @@ function Lightbox({ items, index, onClose, onMove }: {
             aria-modal="true"
             aria-label="Visualizar mídia"
         >
-            <button className="absolute top-4 right-4 p-2 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={onClose} aria-label="Fechar">
+            <button type="button" className="absolute top-4 right-4 p-2 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={onClose} aria-label="Fechar">
                 <X className="w-6 h-6" />
             </button>
             {items.length > 1 && (
                 <>
-                    <button className="absolute left-2 md:left-6 p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={(e) => { e.stopPropagation(); onMove(-1) }} aria-label="Anterior">
+                    <button type="button" className="absolute left-2 md:left-6 p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={(e) => { e.stopPropagation(); onMove(-1) }} aria-label="Anterior">
                         <ChevronLeft className="w-7 h-7" />
                     </button>
-                    <button className="absolute right-2 md:right-6 p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={(e) => { e.stopPropagation(); onMove(1) }} aria-label="Próxima">
+                    <button type="button" className="absolute right-2 md:right-6 p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10" onClick={(e) => { e.stopPropagation(); onMove(1) }} aria-label="Próxima">
                         <ChevronRight className="w-7 h-7" />
                     </button>
                 </>
@@ -68,7 +70,7 @@ function Lightbox({ items, index, onClose, onMove }: {
                 className="max-w-5xl w-full flex flex-col items-center"
                 onClick={(e) => e.stopPropagation()}
             >
-                <MediaAsset item={item} alt={item.caption || 'Mídia'} variant="controlled" className="max-h-[80vh] max-w-full rounded-xl object-contain" />
+                <MediaAsset item={item} alt={item.caption || 'Mídia'} variant="controlled" className="w-full h-auto max-h-[80vh] rounded-xl object-contain" />
                 {(item.caption || items.length > 1) && (
                     <figcaption className="text-white/80 text-sm mt-3 text-center">
                         {item.caption}
@@ -76,7 +78,8 @@ function Lightbox({ items, index, onClose, onMove }: {
                     </figcaption>
                 )}
             </motion.figure>
-        </motion.div>
+        </motion.div>,
+        document.body
     )
 }
 
@@ -183,12 +186,12 @@ export function TestimonialsBlockView({ block, ctx, alt }: { block: Testimonials
                 </AnimatePresence>
                 {items.length > 1 && (
                     <div className="flex items-center justify-center gap-4 mt-10">
-                        <button onClick={() => setActive((i) => (i - 1 + items.length) % items.length)} className="p-2 rounded-full hover:opacity-70" style={{ color: 'var(--pp-muted)' }} aria-label="Depoimento anterior">
+                        <button type="button" onClick={() => setActive((i) => (i - 1 + items.length) % items.length)} className="p-2 rounded-full hover:opacity-70" style={{ color: 'var(--pp-muted)' }} aria-label="Depoimento anterior">
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <div className="flex gap-2">
                             {items.map((_, i) => (
-                                <button
+                                <button type="button"
                                     key={i}
                                     onClick={() => setActive(i)}
                                     aria-label={`Depoimento ${i + 1}`}
@@ -198,7 +201,7 @@ export function TestimonialsBlockView({ block, ctx, alt }: { block: Testimonials
                                 />
                             ))}
                         </div>
-                        <button onClick={() => setActive((i) => (i + 1) % items.length)} className="p-2 rounded-full hover:opacity-70" style={{ color: 'var(--pp-muted)' }} aria-label="Próximo depoimento">
+                        <button type="button" onClick={() => setActive((i) => (i + 1) % items.length)} className="p-2 rounded-full hover:opacity-70" style={{ color: 'var(--pp-muted)' }} aria-label="Próximo depoimento">
                             <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>

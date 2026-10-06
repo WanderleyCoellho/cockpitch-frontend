@@ -3,7 +3,8 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
-import type { WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { ProposalBlock } from '../../shared/blocks'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
@@ -192,6 +193,8 @@ class HttpGateway {
         formData.append('file', file)
         const headers: Record<string, string> = {}
         if (this.token) headers['Authorization'] = `Bearer ${this.token}`
+        // Conta o arquivo na cota da empresa ativa (e não na mais antiga do usuário).
+        if (this.workspaceId) headers['X-Workspace-Id'] = this.workspaceId
         const response = await fetch(`${API_URL}/upload`, { method: 'POST', headers, body: formData })
         if (!response.ok) {
             let message = 'Upload failed'
@@ -279,6 +282,27 @@ class HttpGateway {
     async updateProposal(proposalId: string, data: any) {
         const result = await this.request<any>('PATCH', `/proposals/${proposalId}`, data)
         return normalizeProposal(result.proposal)
+    }
+
+    // ── Modelos de proposta ──
+    async listTemplates(): Promise<{ system: ProposalTemplate[]; workspace: ProposalTemplate[] }> {
+        return this.request('GET', '/templates')
+    }
+
+    async createTemplate(data: {
+        name: string
+        description?: string
+        segment?: string
+        blocks: ProposalBlock[]
+        theme?: string
+        themeCustom?: Record<string, unknown> | null
+    }): Promise<ProposalTemplate> {
+        const result = await this.request<{ template: ProposalTemplate }>('POST', '/templates', data)
+        return result.template
+    }
+
+    async deleteTemplate(templateId: string) {
+        return this.request<void>('DELETE', `/templates/${templateId}`)
     }
 
     async deleteProposal(proposalId: string) {
