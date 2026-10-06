@@ -7,6 +7,12 @@ import { usePlan } from '../context/PlanContext'
 import HelpTip, { FieldLabel } from '../components/help/HelpTip'
 import PlanSelector from '../components/PlanSelector'
 import NotificationPreferences from '../components/NotificationPreferences'
+import GuidedTour, { type TourStep } from '../components/help/GuidedTour'
+
+const TOUR: TourStep[] = [
+    { target: 'team-invite', title: 'Convide sua equipe', body: 'Informe o e-mail e o papel. O convite chega por e-mail e a pessoa pode entrar com senha ou com a conta Google.' },
+    { target: 'team-notifications', title: 'Seus avisos', body: 'Escolha se quer receber e-mail quando o cliente abrir a proposta e quando ele responder. Cada pessoa escolhe os seus.' },
+]
 import type { WorkspaceRole } from '../../shared/types'
 
 const ROLE_LABEL: Record<WorkspaceRole, string> = { OWNER: 'Dono', ADMIN: 'Admin', MEMBER: 'Membro' }
@@ -102,7 +108,7 @@ export default function TeamPage() {
             </div>
 
             {canManage && (
-                <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
+                <section data-tour="team-invite" className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
                     <div className="flex items-center gap-2">
                         <UserPlus className="w-4 h-4 text-[#C9A84C]" />
                         <h2 className="text-sm font-semibold text-white">Convidar pessoa</h2>
@@ -275,7 +281,8 @@ export default function TeamPage() {
                 </section>
             )}
 
-            <NotificationPreferences />
+            <div data-tour="team-notifications"><NotificationPreferences /></div>
+            <GuidedTour id="team" steps={TOUR} />
 
             {showPlans && <PlanSelector onClose={() => setShowPlans(false)} />}
         </div>

@@ -1,5 +1,6 @@
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { HelpCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { HELP } from '../../../shared/help/content'
 
 /**
@@ -35,6 +36,11 @@ export default function HelpTip({ helpKey, side = 'top' }: { helpKey: string; si
                     >
                         <p className="text-xs font-semibold text-[#C9A84C]">{entry.title}</p>
                         <p className="mt-1 text-xs leading-relaxed text-white/75">{entry.body}</p>
+                        {entry.article && (
+                            <Link to={`/ajuda/${entry.article}`} className="mt-2 inline-block text-[11px] font-medium text-[#C9A84C] hover:underline">
+                                Saiba mais →
+                            </Link>
+                        )}
                         <Tooltip.Arrow className="fill-[#161616]" />
                     </Tooltip.Content>
                 </Tooltip.Portal>

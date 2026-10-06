@@ -5,6 +5,14 @@ import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { useAuth } from '../context/AuthContext'
 import type { Package } from '../../shared/types'
 import PackageForm from '../components/PackageForm'
+import GuidedTour, { type TourStep } from '../components/help/GuidedTour'
+import EmptyState from '../components/help/EmptyState'
+
+const TOUR: TourStep[] = [
+    { target: 'new-package', title: 'Seus pacotes', body: 'Um pacote é uma oferta que o cliente pode escolher na proposta, como "Essencial" ou "Completo". Crie quantos quiser.' },
+    { target: 'package-list', title: 'Preço calculado', body: 'Dentro do pacote, cada item tem quantidade e valor. Itens opcionais o cliente liga e desliga na página; cortesias aparecem com o valor riscado.' },
+    { target: 'nav-proposals', title: 'Depois, a proposta', body: 'Com os pacotes prontos, monte uma proposta e marque quais pacotes o cliente pode escolher.' },
+]
 import { Package as PackageIcon, PlusCircle, Star, Layers3, Pencil, Video } from 'lucide-react'
 
 export default function PackagesPage() {
@@ -62,6 +70,7 @@ export default function PackagesPage() {
                     </p>
                 </div>
                 <button
+                    data-tour="new-package"
                     onClick={handleNew}
                     className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] transition-colors"
                 >
@@ -93,27 +102,30 @@ export default function PackagesPage() {
                 </div>
             </div>
 
+            <GuidedTour id="packages" steps={TOUR} />
+
             {/* Lista de pacotes */}
             {isLoading ? (
                 <div className="text-center py-16 text-white/40">Carregando {packageLabel.toLowerCase()}...</div>
             ) : packages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-                        <PackageIcon className="w-7 h-7 text-[#C9A84C]" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Nenhum {packageLabelSingular.toLowerCase()} criado</h3>
-                    <p className="text-sm text-white/40 mb-6 max-w-xs">
-                        Crie pacotes de serviço para oferecer opções organizadas nas suas propostas.
-                    </p>
-                    <button
-                        onClick={handleNew}
-                        className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] transition-colors"
-                    >
-                        <PlusCircle className="w-4 h-4" /> Criar primeiro {packageLabelSingular.toLowerCase()}
-                    </button>
+                <div data-tour="package-list">
+                    <EmptyState
+                        icon={PackageIcon}
+                        title={`Nenhum ${packageLabelSingular.toLowerCase()} criado`}
+                        description="Monte o que você vende: itens com quantidade e valor (o total é calculado sozinho), opcionais que o cliente pode adicionar e cortesias. Depois é só marcar os pacotes na proposta."
+                        article="pacotes-e-precos"
+                        action={
+                            <button
+                                onClick={handleNew}
+                                className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] transition-colors"
+                            >
+                                <PlusCircle className="w-4 h-4" /> Criar primeiro {packageLabelSingular.toLowerCase()}
+                            </button>
+                        }
+                    />
                 </div>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2" data-tour="package-list">
                     {packages.map((pkg) => (
                         <PackageCard key={pkg.id} pkg={pkg} onEdit={() => handleEdit(pkg)} />
                     ))}

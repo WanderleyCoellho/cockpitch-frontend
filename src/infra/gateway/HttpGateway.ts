@@ -3,7 +3,7 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
-import type { ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { OnboardingStatus, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
 import type { ProposalBlock } from '../../shared/blocks'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -171,6 +171,15 @@ class HttpGateway {
         const result = await this.request<any>('POST', '/auth/google', body, false)
         if (result.token) this.setToken(result.token)
         return result
+    }
+
+    // ── Primeiros passos e tours ──
+    async getOnboarding(): Promise<OnboardingStatus> {
+        return this.request('GET', '/workspaces/current/onboarding')
+    }
+
+    async updateOnboarding(patch: { linkShared?: true; dismissedChecklist?: boolean; tourSeen?: string; toursDisabled?: boolean; resetTours?: true }) {
+        return this.request<{ onboarding: unknown }>('PATCH', '/auth/me/onboarding', patch)
     }
 
     async getNotificationPreferences(): Promise<{ notifyOnOpen: boolean; notifyOnResponse: boolean }> {

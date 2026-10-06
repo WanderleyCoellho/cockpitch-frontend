@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './interface/context/AuthContext'
-import { LayoutDashboard, FileText, Package, BarChart3, LogOut, Menu, X, Users, Building2 } from 'lucide-react'
+import { LayoutDashboard, FileText, Package, BarChart3, LogOut, Menu, X, Users, Building2, BookOpen } from 'lucide-react'
+import HelpMenu from './interface/components/help/HelpMenu'
 import HelpTip from './interface/components/help/HelpTip'
 import { usePlan } from './interface/context/PlanContext'
 import { useState } from 'react'
@@ -24,7 +25,8 @@ export default function Layout() {
         { label: 'Propostas', path: '/proposals', icon: FileText },
         { label: 'Pacotes', path: '/packages', icon: Package },
         { label: 'Equipe', path: '/equipe', icon: Users },
-        { label: 'Analytics', path: '/analytics', icon: BarChart3 }
+        { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+        { label: 'Ajuda', path: '/ajuda', icon: BookOpen },
     ]
 
     const workspacePicker = activeWorkspace && (
@@ -73,6 +75,7 @@ export default function Layout() {
                     {navItems.map(({ label, path, icon: Icon }) => (
                         <button
                             key={path}
+                            data-tour={`nav-${path.slice(1)}`}
                             onClick={() => navigate(path)}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive(path)
                                     ? 'bg-[#C9A84C]/10 text-[#C9A84C]'
@@ -143,6 +146,7 @@ export default function Layout() {
             <main className="flex-1 md:ml-56 pt-14 md:pt-0 min-h-screen">
                 <Outlet />
             </main>
+            <HelpMenu />
         </div>
     )
 }

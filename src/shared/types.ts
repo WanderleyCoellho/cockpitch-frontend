@@ -145,6 +145,17 @@ export type Proposal = {
     updatedAt: string
 }
 
+export type OnboardingStepKey = 'profile' | 'package' | 'proposal' | 'shared' | 'viewed'
+
+export type OnboardingStatus = {
+    steps: Array<{ key: OnboardingStepKey; done: boolean }>
+    completed: number
+    total: number
+    dismissed: boolean
+    toursSeen: string[]
+    toursDisabled: boolean
+}
+
 export type ProposalResponseType = 'ACCEPTED' | 'DECLINED' | 'CHANGE_REQUESTED'
 
 export type AcceptanceState = {

@@ -13,6 +13,7 @@ import TeamPage from './interface/pages/TeamPage'
 import InvitePage from './interface/pages/InvitePage'
 import { PrivacyPage, TermsPage } from './interface/pages/LegalPages'
 import ProposalPrintPage from './interface/pages/ProposalPrintPage'
+import HelpCenterPage from './interface/pages/HelpCenterPage'
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth()
@@ -50,6 +51,8 @@ function AppRoutes() {
                 <Route path="/packages" element={<PackagesPage />} />
                 <Route path="/equipe" element={<TeamPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/ajuda" element={<HelpCenterPage />} />
+                <Route path="/ajuda/:slug" element={<HelpCenterPage />} />
             </Route>
             {/* Convite de equipe (público: funciona logado ou não) */}
             <Route path="/convite/:token" element={<InvitePage />} />
