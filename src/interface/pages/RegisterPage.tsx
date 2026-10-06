@@ -250,6 +250,10 @@ export default function RegisterPage() {
                             Fazer login
                         </Link>
                     </p>
+                    <p className="text-center text-[11px] text-white/30">
+                        Ao criar a conta você concorda com os <Link to="/termos" className="underline hover:text-white/60">Termos de uso</Link> e a{' '}
+                        <Link to="/privacidade" className="underline hover:text-white/60">Política de Privacidade</Link>.
+                    </p>
                 </div>
             </div>
         </div>

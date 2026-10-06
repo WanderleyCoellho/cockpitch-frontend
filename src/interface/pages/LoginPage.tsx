@@ -160,6 +160,9 @@ export default function LoginPage() {
                             Cadastrar
                         </Link>
                     </p>
+                    <p className="text-center text-[11px] text-white/30">
+                        <Link to="/privacidade" className="hover:text-white/60">Privacidade</Link> · <Link to="/termos" className="hover:text-white/60">Termos de uso</Link>
+                    </p>
                 </div>
             </div>
         </div>
