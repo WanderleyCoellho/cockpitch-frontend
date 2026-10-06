@@ -26,6 +26,6 @@ Só o **dono** da empresa assina e altera o plano.
 
 Quem já assina clica em **Gerenciar assinatura** para trocar o cartão, baixar faturas, mudar de plano ou cancelar.
 
-- **Trocar de plano:** a diferença é calculada proporcionalmente aos dias restantes do mês.
+- **Trocar de plano:** ao subir de plano, a diferença proporcional aos dias restantes é cobrada na hora; ao descer, ela vira crédito nas próximas faturas.
 - **Cancelar:** o plano pago continua até o fim do período já pago; depois a conta volta para o Grátis, sem perder propostas.
 - **Pagamento recusado:** o painel mostra um aviso com o botão **Atualizar pagamento**. O plano segue ativo enquanto o Stripe tenta cobrar de novo.
