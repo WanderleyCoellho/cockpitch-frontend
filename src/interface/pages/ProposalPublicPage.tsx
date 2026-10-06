@@ -1,4 +1,5 @@
-﻿import { useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { calculatePackagePricing, formatCents, formatQuantity, lineTotalCents, packagePriceText } from '../../shared/pricing'
 import { sanitizeHtml } from '../../shared/sanitizeHtml'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -523,6 +524,18 @@ interface PackagesSectionProps {
 
 function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: PackagesSectionProps) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+    // Opcionais que o cliente marcou em cada pacote: o total é recalculado na hora, sem chamar o servidor.
+    const [selectedOptionals, setSelectedOptionals] = useState<Record<string, string[]>>({})
+
+    const toggleOptional = (packageId: string, itemId: string) => {
+        setSelectedOptionals((current) => {
+            const list = current[packageId] ?? []
+            return {
+                ...current,
+                [packageId]: list.includes(itemId) ? list.filter((id) => id !== itemId) : [...list, itemId],
+            }
+        })
+    }
     const packageLabel = provider?.packageLabel || 'Pacotes'
     const packageLabelSingular = provider?.packageLabel?.replace(/s$/, '') || 'pacote'
 
@@ -547,6 +560,31 @@ function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: 
                 <div className={`grid gap-6 ${packages.length === 1 ? 'max-w-sm mx-auto' : packages.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'md:grid-cols-3'}`}>
                     {packages.map((pkg) => {
                         const isOpen = !!expanded[pkg.id]
+                        const chosen = selectedOptionals[pkg.id] ?? []
+                        const hasPricing = !!pkg.pricing
+                        const pricing = hasPricing
+                            ? calculatePackagePricing(
+                                {
+                                    priceMode: pkg.priceMode,
+                                    fixedPriceCents: pkg.fixedPriceCents,
+                                    discountType: pkg.discountType,
+                                    discountValue: pkg.discountValue,
+                                    items: (pkg.items ?? []).map((item) => ({
+                                        id: item.id,
+                                        kind: item.kind ?? (item.isCourtesy ? 'COURTESY' : 'INCLUDED'),
+                                        quantity: item.quantity ?? 1,
+                                        unitPriceCents: item.unitPriceCents ?? 0,
+                                    })),
+                                },
+                                chosen
+                            )
+                            : null
+                        const priceText = pricing
+                            ? pricing.onRequest
+                                ? pkg.priceLabel?.trim() || 'Sob consulta'
+                                : `${pkg.priceLabel?.trim() ? `${pkg.priceLabel.trim()} ` : ''}${formatCents(pricing.totalCents)}`
+                            : packagePriceText(pkg)
+                        const chosenNames = (pkg.items ?? []).filter((item) => chosen.includes(item.id)).map((item) => item.name)
                         const hasMedia = pkg.mediaUrl && pkg.mediaUrl.length > 0;
 
                         return (
@@ -583,7 +621,12 @@ function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: 
                                     <div>
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1">
-                                                <p className="pp-heading text-2xl font-light mb-1" style={{ color: 'var(--pp-accent)' }}>{pkg.price}</p>
+                                                <p className="pp-heading text-2xl font-light mb-1" style={{ color: 'var(--pp-accent)' }} aria-live="polite">
+                                                    {pricing && pricing.discountCents > 0 && (
+                                                        <span className="block text-sm line-through opacity-60">{formatCents(pricing.grossCents)}</span>
+                                                    )}
+                                                    {priceText}
+                                                </p>
                                                 <h3 className="pp-heading text-xl font-semibold mb-2" style={{ color: 'var(--pp-text)' }}>{pkg.name}</h3>
                                                 {pkg.description && (
                                                     <p className="pp-body text-sm leading-relaxed" style={{ color: 'var(--pp-muted)' }}>{pkg.description}</p>
@@ -603,16 +646,48 @@ function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: 
                                         {pkg.items && pkg.items.length > 0 && (
                                             <ul className="space-y-2.5 my-4">
                                                 {pkg.items.map((item) => {
-                                                    const isCourtesy = pkg.courtesyIds?.includes(item.id) ?? item.isCourtesy
+                                                    const kind = item.kind ?? (item.isCourtesy ? 'COURTESY' : 'INCLUDED')
+                                                    const line = lineTotalCents({ quantity: item.quantity ?? 1, unitPriceCents: item.unitPriceCents ?? 0 })
+                                                    const qty = Number(item.quantity ?? 1)
+                                                    const qtyText = qty !== 1 || item.unit ? `${formatQuantity(qty)}${item.unit ? ` ${item.unit}` : '×'} ` : ''
+
+                                                    if (kind === 'OPTIONAL') {
+                                                        const checked = chosen.includes(item.id)
+                                                        return (
+                                                            <li key={item.id}>
+                                                                <label className="flex items-center gap-2.5 pp-body text-sm cursor-pointer select-none rounded-xl px-2 py-1.5 -mx-2 transition"
+                                                                    style={{ color: checked ? 'var(--pp-text)' : 'var(--pp-muted)', background: checked ? 'color-mix(in srgb, var(--pp-accent) 10%, transparent)' : 'transparent' }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={checked}
+                                                                        onChange={() => toggleOptional(pkg.id, item.id)}
+                                                                        className="w-4 h-4 accent-current"
+                                                                        style={{ accentColor: 'var(--pp-accent)' }}
+                                                                    />
+                                                                    <span className="flex-1">
+                                                                        {qtyText}{item.name}
+                                                                        <span className="ml-1.5 text-[10px] uppercase tracking-wider opacity-70">opcional</span>
+                                                                        {item.description && <span className="block text-xs opacity-70">{item.description}</span>}
+                                                                    </span>
+                                                                    {line > 0 && <span className="text-xs whitespace-nowrap" style={{ color: 'var(--pp-accent)' }}>+ {formatCents(line)}</span>}
+                                                                </label>
+                                                            </li>
+                                                        )
+                                                    }
+
+                                                    const isCourtesy = kind === 'COURTESY'
                                                     return (
                                                         <li key={item.id} className="flex items-center gap-2.5 pp-body text-sm"
                                                             style={{ color: isCourtesy ? 'var(--pp-accent)' : 'var(--pp-muted)' }}>
                                                             <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--pp-accent)' }} />
-                                                            <span>{item.name}</span>
+                                                            <span className="flex-1">
+                                                                {qtyText}{item.name}
+                                                                {item.description && <span className="block text-xs opacity-70">{item.description}</span>}
+                                                            </span>
                                                             {isCourtesy && (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-1 font-medium"
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-1 font-medium whitespace-nowrap"
                                                                     style={{ background: 'var(--pp-accent)', color: '#000', opacity: 0.85 }}>
-                                                                    Cortesia
+                                                                    Cortesia{line > 0 && <span className="ml-1 line-through">{formatCents(line)}</span>}
                                                                 </span>
                                                             )}
                                                         </li>
@@ -620,9 +695,36 @@ function PackagesSection({ proposal, packages, provider, tk, onPackageExpand }: 
                                                 })}
                                             </ul>
                                         )}
+                                        {pricing && !pricing.onRequest && (pricing.optionalsCents > 0 || pricing.discountCents > 0 || pricing.courtesyValueCents > 0) && (
+                                            <div className="mb-4 rounded-2xl px-4 py-3 pp-body text-sm space-y-1" style={{ border: '1px solid var(--pp-border)' }} aria-live="polite">
+                                                {pricing.optionalsCents > 0 && (
+                                                    <div className="flex justify-between" style={{ color: 'var(--pp-muted)' }}>
+                                                        <span>Opcionais escolhidos</span><span>+ {formatCents(pricing.optionalsCents)}</span>
+                                                    </div>
+                                                )}
+                                                {pricing.discountCents > 0 && (
+                                                    <div className="flex justify-between" style={{ color: 'var(--pp-muted)' }}>
+                                                        <span>Desconto</span><span>− {formatCents(pricing.discountCents)}</span>
+                                                    </div>
+                                                )}
+                                                {pricing.courtesyValueCents > 0 && (
+                                                    <div className="flex justify-between" style={{ color: 'var(--pp-accent)' }}>
+                                                        <span>Você ganha em cortesias</span><span>{formatCents(pricing.courtesyValueCents)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between font-semibold pt-1" style={{ color: 'var(--pp-text)', borderTop: '1px solid var(--pp-border)' }}>
+                                                    <span>Total</span><span style={{ color: 'var(--pp-accent)' }}>{formatCents(pricing.totalCents)}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         {provider?.whatsapp && (
                                             <a
-                                                href={`https://wa.me/${provider.whatsapp.replace(/\D/g, '')}?text=Olá! Tenho interesse no ${encodeURIComponent(pkg.name)} para ${encodeURIComponent(proposal.clientName)}.`}
+                                                href={`https://wa.me/${provider.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                                    `Olá! Tenho interesse no ${pkg.name} para ${proposal.clientName}` +
+                                                    (chosenNames.length ? `, com os opcionais: ${chosenNames.join(', ')}` : '') +
+                                                    (pricing && !pricing.onRequest ? ` (total ${formatCents(pricing.totalCents)})` : '') +
+                                                    '.'
+                                                )}`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 onClick={(e) => e.stopPropagation()}

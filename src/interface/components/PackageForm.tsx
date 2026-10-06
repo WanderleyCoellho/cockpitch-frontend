@@ -4,7 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, Trash2, AlertTriangle, Upload, Film, Image, ExternalLink } from 'lucide-react'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
-import { PackageSchema, PackageItemSchema } from '../../shared/schemas'
+import { PackageSchema, PackageItemSchema, toPackagePayload, toPackageItemPayload } from '../../shared/schemas'
+import { calculatePackagePricing, centsToInput, formatCents, formatQuantity, lineTotalCents, parseMoneyToCents } from '../../shared/pricing'
+import { parseDecimalInput } from '../../shared/schemas'
+import HelpTip, { FieldLabel } from './help/HelpTip'
 import type { PackageFormData, PackageItemFormData } from '../../shared/schemas'
 import type { Package, PackageItem } from '../../shared/types'
 import { VisualColorPicker } from './shared/VisualColorPicker'
@@ -22,8 +25,21 @@ interface PackageFormProps {
     onClose: () => void
 }
 
-export default function PackageForm({ providerId, package: pkg, onClose }: PackageFormProps) {
+const KIND_LABEL: Record<PackageItem['kind'], string> = { INCLUDED: 'Incluído', OPTIONAL: 'Opcional', COURTESY: 'Cortesia' }
+const KIND_STYLE: Record<PackageItem['kind'], string> = {
+    INCLUDED: 'bg-white/10 text-white/70',
+    OPTIONAL: 'bg-sky-500/15 text-sky-300',
+    COURTESY: 'bg-amber-500/15 text-amber-300',
+}
+
+const fieldClass =
+    'w-full px-3 py-2 rounded-xl border border-white/15 bg-black/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40'
+
+export default function PackageForm({ providerId, package: initialPackage, onClose }: PackageFormProps) {
     const queryClient = useQueryClient()
+    // Depois de criar, o formulário continua aberto no pacote recém-criado para adicionar os itens.
+    const [pkg, setPkg] = useState<Package | null>(initialPackage ?? null)
+    const [justCreated, setJustCreated] = useState(false)
     const isEditing = !!pkg
 
     const [showItemForm, setShowItemForm] = useState(false)
@@ -35,24 +51,37 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
 
     const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<PackageFormData>({
         resolver: zodResolver(PackageSchema),
-        defaultValues: pkg
+        defaultValues: initialPackage
             ? {
-                name: pkg.name,
-                description: pkg.description,
-                price: pkg.price,
-                isHighlighted: pkg.isHighlighted,
-                highlightLabel: pkg.highlightLabel,
-                highlightColor: pkg.highlightColor,
-                mediaUrl: pkg.mediaUrl,
-                mediaType: pkg.mediaType,
-                itemIds: pkg.itemIds,
+                name: initialPackage.name,
+                description: initialPackage.description,
+                priceMode: initialPackage.priceMode ?? 'FIXED',
+                fixedPrice: centsToInput(initialPackage.fixedPriceCents),
+                priceLabel: initialPackage.priceLabel ?? '',
+                discountType: initialPackage.discountType ?? 'NONE',
+                discountInput:
+                    initialPackage.discountType === 'PERCENT'
+                        ? String((initialPackage.discountValue ?? 0) / 100).replace('.', ',')
+                        : initialPackage.discountType === 'AMOUNT'
+                          ? centsToInput(initialPackage.discountValue)
+                          : '',
+                isHighlighted: initialPackage.isHighlighted,
+                highlightLabel: initialPackage.highlightLabel,
+                highlightColor: initialPackage.highlightColor,
+                mediaUrl: initialPackage.mediaUrl,
+                mediaType: initialPackage.mediaType,
+                itemIds: initialPackage.itemIds,
             }
-            : { isHighlighted: false, itemIds: [] },
+            : { isHighlighted: false, itemIds: [], priceMode: 'SUM_OF_ITEMS', discountType: 'NONE' },
     })
 
     const isHighlighted = watch('isHighlighted')
     const mediaUrl = watch('mediaUrl')
     const mediaType = watch('mediaType')
+    const priceMode = watch('priceMode')
+    const fixedPrice = watch('fixedPrice')
+    const discountType = watch('discountType')
+    const discountInput = watch('discountInput')
 
     const { data: items = [], refetch: refetchItems } = useQuery<PackageItem[]>({
         queryKey: ['packageItems', pkg?.id],
@@ -60,14 +89,33 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
         enabled: !!pkg?.id,
     })
 
+    // Resumo ao vivo, com os valores que estão no formulário (antes de salvar).
+    const preview = calculatePackagePricing({
+        priceMode: priceMode ?? 'SUM_OF_ITEMS',
+        fixedPriceCents: parseMoneyToCents(fixedPrice ?? '') ?? 0,
+        discountType: discountType ?? 'NONE',
+        discountValue:
+            discountType === 'PERCENT'
+                ? Math.round((parseDecimalInput(discountInput) ?? 0) * 100)
+                : discountType === 'AMOUNT'
+                  ? parseMoneyToCents(discountInput ?? '') ?? 0
+                  : 0,
+        items,
+    })
+
     const saveMutation = useMutation({
         mutationFn: (data: PackageFormData) =>
             isEditing
-                ? httpGateway.updatePackage(pkg!.id, { ...data, providerId })
-                : httpGateway.createPackage({ ...data, providerId }),
-        onSuccess: () => {
+                ? httpGateway.updatePackage(pkg!.id, { ...toPackagePayload(data), providerId })
+                : httpGateway.createPackage({ ...toPackagePayload(data), providerId }),
+        onSuccess: (saved: Package) => {
             queryClient.invalidateQueries({ queryKey: ['packages', providerId] })
-            onClose()
+            if (isEditing) {
+                onClose()
+                return
+            }
+            setPkg(saved)
+            setJustCreated(true)
         },
     })
 
@@ -197,17 +245,80 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
                     </div>
 
                     {/* Preço */}
-                    <div>
-                        <label className="block text-sm font-medium text-white/80 mb-1">Preço *</label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45 text-sm">R$</span>
+                    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-white">Preço</span>
+                            <HelpTip helpKey="package.priceMode" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Como o preço é calculado">
+                            {([
+                                ['SUM_OF_ITEMS', 'Soma dos itens'],
+                                ['FIXED', 'Valor fixo'],
+                                ['ON_REQUEST', 'Sob consulta'],
+                            ] as const).map(([mode, label]) => (
+                                <button
+                                    key={mode}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={priceMode === mode}
+                                    onClick={() => setValue('priceMode', mode, { shouldValidate: true })}
+                                    className={`rounded-xl border px-2 py-2 text-xs font-medium transition ${priceMode === mode
+                                        ? 'border-[#C9A84C]/60 bg-[#C9A84C]/10 text-[#C9A84C]'
+                                        : 'border-white/10 text-white/60 hover:border-white/20'
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {priceMode === 'FIXED' && (
+                            <div>
+                                <FieldLabel htmlFor="fixedPrice">Valor do pacote</FieldLabel>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45 text-sm">R$</span>
+                                    <input id="fixedPrice" inputMode="decimal" {...register('fixedPrice')} className={`${fieldClass} pl-9`} placeholder="3.500,00" />
+                                </div>
+                                {errors.fixedPrice && <p className="text-xs text-red-400 mt-1">{errors.fixedPrice.message}</p>}
+                            </div>
+                        )}
+
+                        <div>
+                            <FieldLabel htmlFor="priceLabel" helpKey="package.priceLabel">
+                                {priceMode === 'ON_REQUEST' ? 'Texto no lugar do preço' : 'Texto junto ao preço (opcional)'}
+                            </FieldLabel>
                             <input
-                                {...register('price')}
-                                className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/15 bg-black/20 text-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
-                                placeholder="0.00"
+                                id="priceLabel"
+                                {...register('priceLabel')}
+                                className={fieldClass}
+                                placeholder={priceMode === 'ON_REQUEST' ? 'Ex.: Sob consulta' : 'Ex.: a partir de, por pessoa'}
                             />
                         </div>
-                        {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price.message}</p>}
+
+                        {priceMode !== 'ON_REQUEST' && (
+                            <div className="grid grid-cols-[150px_1fr] gap-2 items-end">
+                                <div>
+                                    <FieldLabel htmlFor="discountType" helpKey="package.discount">Desconto</FieldLabel>
+                                    <select id="discountType" {...register('discountType')} className={fieldClass}>
+                                        <option value="NONE">Sem desconto</option>
+                                        <option value="PERCENT">Em %</option>
+                                        <option value="AMOUNT">Em R$</option>
+                                    </select>
+                                </div>
+                                {discountType !== 'NONE' && (
+                                    <div>
+                                        <input
+                                            aria-label="Valor do desconto"
+                                            inputMode="decimal"
+                                            {...register('discountInput')}
+                                            className={fieldClass}
+                                            placeholder={discountType === 'PERCENT' ? '10' : '200,00'}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {errors.discountInput && <p className="text-xs text-red-400">{errors.discountInput.message}</p>}
                     </div>
 
                     {/* Destaque */}
@@ -253,8 +364,13 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
                     {/* Itens do pacote — só exibe ao editar */}
                     {isEditing && (
                         <div className="pt-2 border-t border-white/10">
+                            {justCreated && (
+                                <p role="status" className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200">
+                                    Pacote criado! Agora adicione os itens. Quando terminar, clique em Salvar.
+                                </p>
+                            )}
                             <div className="flex items-center justify-between my-3">
-                                <h3 className="text-sm font-semibold text-white">Itens do pacote</h3>
+                                <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">Itens do pacote <HelpTip helpKey="item.kind" /></h3>
                                 <button
                                     type="button"
                                     onClick={() => { setEditingItem(null); setShowItemForm(true) }}
@@ -265,34 +381,79 @@ export default function PackageForm({ providerId, package: pkg, onClose }: Packa
                             </div>
 
                             {items.length === 0 ? (
-                                <p className="text-xs text-white/40 italic">Nenhum item adicionado ainda.</p>
+                                <p className="text-xs text-white/40 italic">
+                                    Nenhum item ainda. Adicione o que está incluso, opcionais que o cliente pode escolher e cortesias.
+                                </p>
                             ) : (
                                 <ul className="space-y-2">
-                                    {items.map((item) => (
-                                        <li key={item.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-white">{item.name}</span>
-                                                {item.isCourtesy && (
-                                                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Cortesia</span>
-                                                )}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setEditingItem(item); setShowItemForm(true) }}
-                                                className="text-xs text-white/50 hover:text-white transition"
-                                            >
-                                                Editar
-                                            </button>
-                                        </li>
-                                    ))}
+                                    {items.map((item) => {
+                                        const line = lineTotalCents(item)
+                                        return (
+                                            <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-sm text-white truncate">{item.name}</span>
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${KIND_STYLE[item.kind]}`}>{KIND_LABEL[item.kind]}</span>
+                                                    </div>
+                                                    {item.unitPriceCents > 0 && (
+                                                        <p className="text-[11px] text-white/40 mt-0.5">
+                                                            {formatQuantity(item.quantity)}{item.unit ? ` ${item.unit}` : ''} × {formatCents(item.unitPriceCents)} ={' '}
+                                                            <span className={item.kind === 'COURTESY' ? 'line-through' : 'text-white/70'}>{formatCents(line)}</span>
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setEditingItem(item); setShowItemForm(true) }}
+                                                    className="shrink-0 text-xs text-white/50 hover:text-white transition"
+                                                >
+                                                    Editar
+                                                </button>
+                                            </li>
+                                        )
+                                    })}
                                 </ul>
                             )}
+
+                            {/* Resumo do preço com os valores atuais do formulário */}
+                            <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-sm space-y-1" aria-live="polite">
+                                {preview.onRequest ? (
+                                    <p className="text-white/70">Este pacote aparece como <strong>sob consulta</strong> para o cliente.</p>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between text-white/60">
+                                            <span>{priceMode === 'FIXED' ? 'Valor fixo' : 'Soma dos itens incluídos'}</span>
+                                            <span>{formatCents(preview.baseCents)}</span>
+                                        </div>
+                                        {preview.discountCents > 0 && (
+                                            <div className="flex justify-between text-emerald-300">
+                                                <span>Desconto</span>
+                                                <span>− {formatCents(preview.discountCents)}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between font-semibold text-white pt-1 border-t border-white/10">
+                                            <span>Total para o cliente</span>
+                                            <span className="text-[#C9A84C]">{formatCents(preview.totalCents)}</span>
+                                        </div>
+                                        {items.some((item) => item.kind === 'OPTIONAL') && (
+                                            <p className="text-[11px] text-white/40">Opcionais somam quando o cliente marcar na proposta.</p>
+                                        )}
+                                        {preview.courtesyValueCents > 0 && (
+                                            <p className="text-[11px] text-amber-300/80">Cortesias: o cliente ganha {formatCents(preview.courtesyValueCents)}.</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
 
                             {showItemForm && (
                                 <PackageItemInlineForm
                                     packageId={pkg!.id}
                                     item={editingItem}
-                                    onSaved={() => { setShowItemForm(false); refetchItems() }}
+                                    onSaved={() => {
+                                        setShowItemForm(false)
+                                        refetchItems()
+                                        queryClient.invalidateQueries({ queryKey: ['packages', providerId] })
+                                    }}
                                     onCancel={() => setShowItemForm(false)}
                                 />
                             )}
@@ -376,8 +537,16 @@ function PackageItemInlineForm({ packageId, item, onSaved, onCancel }: PackageIt
     const { register, handleSubmit, reset, formState: { errors } } = useForm<PackageItemFormData>({
         resolver: zodResolver(PackageItemSchema),
         defaultValues: item
-            ? { name: item.name, isCourtesy: item.isCourtesy, order: item.order }
-            : { isCourtesy: false, order: 0 },
+            ? {
+                name: item.name,
+                description: item.description ?? '',
+                kind: item.kind ?? (item.isCourtesy ? 'COURTESY' : 'INCLUDED'),
+                quantity: formatQuantity(item.quantity ?? 1),
+                unit: item.unit ?? '',
+                unitPrice: item.unitPriceCents ? centsToInput(item.unitPriceCents) : '',
+                order: item.order,
+            }
+            : { kind: 'INCLUDED', quantity: '1', order: 0 },
     })
 
     const deleteMutation = useMutation({
@@ -388,8 +557,8 @@ function PackageItemInlineForm({ packageId, item, onSaved, onCancel }: PackageIt
     const saveMutation = useMutation({
         mutationFn: (data: PackageItemFormData) =>
             item
-                ? httpGateway.updatePackageItem(item.id, data)
-                : httpGateway.createPackageItem({ ...data, packageId }),
+                ? httpGateway.updatePackageItem(item.id, toPackageItemPayload(data))
+                : httpGateway.createPackageItem({ ...toPackageItemPayload(data), packageId }),
         onSuccess: () => { reset(); onSaved() },
     })
 
@@ -398,22 +567,44 @@ function PackageItemInlineForm({ packageId, item, onSaved, onCancel }: PackageIt
             <p className="text-xs font-medium text-white">{item ? 'Editar item' : 'Novo item'}</p>
 
             <div>
-                <input
-                    {...register('name')}
-                    className="w-full px-3 py-2 rounded-xl border border-white/15 bg-black/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
-                    placeholder="Ex: 8 horas de cobertura"
-                />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
+                <FieldLabel htmlFor="item-name">Nome do item</FieldLabel>
+                <input id="item-name" {...register('name')} className={fieldClass} placeholder="Ex.: Horas de consultoria, Diária de filmagem" />
+                {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>}
             </div>
 
-            <div className="flex items-center gap-3">
-                <input
-                    {...register('isCourtesy')}
-                    type="checkbox"
-                    id="isCourtesyItem"
-                    className="w-4 h-4 rounded border-white/30 bg-black/20"
-                />
-                <label htmlFor="isCourtesyItem" className="text-xs text-white/80">Item de cortesia</label>
+            <div>
+                <FieldLabel htmlFor="item-kind" helpKey="item.kind">Tipo</FieldLabel>
+                <select id="item-kind" {...register('kind')} className={fieldClass}>
+                    <option value="INCLUDED">Incluído no pacote</option>
+                    <option value="OPTIONAL">Opcional (cliente escolhe)</option>
+                    <option value="COURTESY">Cortesia (presente)</option>
+                </select>
+            </div>
+
+            <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
+                <div>
+                    <FieldLabel htmlFor="item-qty" helpKey="item.quantity">Qtd.</FieldLabel>
+                    <input id="item-qty" inputMode="decimal" {...register('quantity')} className={fieldClass} placeholder="1" />
+                </div>
+                <div>
+                    <FieldLabel htmlFor="item-unit">Unidade</FieldLabel>
+                    <input id="item-unit" {...register('unit')} className={fieldClass} placeholder="h, un, diária" />
+                </div>
+                <div>
+                    <FieldLabel htmlFor="item-price" helpKey="item.unitPrice">Valor unitário</FieldLabel>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45 text-xs">R$</span>
+                        <input id="item-price" inputMode="decimal" {...register('unitPrice')} className={`${fieldClass} pl-8`} placeholder="0,00" />
+                    </div>
+                </div>
+            </div>
+            {(errors.quantity || errors.unitPrice) && (
+                <p className="text-xs text-red-400">{errors.quantity?.message ?? errors.unitPrice?.message}</p>
+            )}
+
+            <div>
+                <FieldLabel htmlFor="item-description">Descrição (opcional)</FieldLabel>
+                <input id="item-description" {...register('description')} className={fieldClass} placeholder="Detalhe que aparece para o cliente" />
             </div>
 
             <div className="flex items-center justify-between">

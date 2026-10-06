@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { packagePriceText } from '../../shared/pricing'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -404,7 +405,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                             {/* Preço */}
                                             <p className={`text-xl font-light mt-3 ml-8 transition-colors ${isChecked ? 'text-[#C9A84C]' : 'text-white/45'
                                                 }`}>
-                                                R$ {pkg.price}
+                                                {packagePriceText(pkg)}
                                             </p>
                                         </label>
                                     )

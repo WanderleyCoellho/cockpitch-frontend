@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { packagePriceText } from '../../shared/pricing'
 import { useQuery } from '@tanstack/react-query'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { useAuth } from '../context/AuthContext'
@@ -182,7 +183,7 @@ function PackageCard({ pkg, onEdit }: PackageCardProps) {
                         )}
                     </div>
                     <span className="text-lg font-semibold text-[#C9A84C] shrink-0 ml-3">
-                        R$ {pkg.price}
+                        {packagePriceText(pkg)}
                     </span>
                 </div>
             </div>

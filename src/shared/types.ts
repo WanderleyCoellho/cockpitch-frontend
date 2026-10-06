@@ -7,11 +7,18 @@ export type ProposalMediaItem = {
     type: 'image' | 'video'
 }
 
+export type PackageItemKind = 'INCLUDED' | 'OPTIONAL' | 'COURTESY'
+
 export type PackageItem = {
     id: string
     packageId: string
     name: string
+    description?: string | null
     isCourtesy: boolean
+    kind: PackageItemKind
+    quantity: number
+    unit?: string | null
+    unitPriceCents: number
     order: number
 }
 
@@ -81,7 +88,15 @@ export type Package = {
     providerId: string
     name: string
     description?: string
+    /** Legado: total calculado em texto ("3500.00") ou o rótulo quando é sob consulta. */
     price: string
+    priceMode: 'SUM_OF_ITEMS' | 'FIXED' | 'ON_REQUEST'
+    fixedPriceCents?: number | null
+    discountType: 'NONE' | 'PERCENT' | 'AMOUNT'
+    discountValue: number
+    priceLabel?: string | null
+    pricing?: import('./pricing').PackagePricing
+    items?: PackageItem[]
     isHighlighted: boolean
     highlightLabel?: string
     highlightColor?: string

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMITS, parseMoneyToCents } from './pricing'
 
 /**
  * Schemas de validação Zod para Lumen Deal
@@ -43,23 +44,103 @@ export const RegisterSchema = z.object({
     segment: z.string().optional(),
 })
 
+/** "1,5" ou "1.5" → 1.5 */
+export function parseDecimalInput(value: string | undefined | null): number | null {
+    if (value === undefined || value === null) return null
+    const trimmed = String(value).trim().replace(/\s/g, '')
+    if (!trimmed) return null
+    const normalized = trimmed.includes(',') ? trimmed.replace(/\./g, '').replace(',', '.') : trimmed
+    const number = Number(normalized)
+    return Number.isFinite(number) ? number : null
+}
+
+const optionalMoney = z
+    .string()
+    .optional()
+    .refine((value) => !value?.trim() || parseMoneyToCents(value) !== null, 'Valor inválido. Use, por exemplo, 1.500,00')
+
 export const PackageItemSchema = z.object({
-    name: z.string().min(1, 'Nome do item obrigatório'),
-    isCourtesy: z.boolean().default(false),
+    name: z.string().trim().min(1, 'Nome do item obrigatório').max(200),
+    description: z.string().max(500).optional(),
+    kind: z.enum(['INCLUDED', 'OPTIONAL', 'COURTESY']).default('INCLUDED'),
+    quantity: z
+        .string()
+        .default('1')
+        .refine((value) => {
+            const n = parseDecimalInput(value)
+            return n !== null && n >= 0.01 && n <= LIMITS.maxQuantity
+        }, `Quantidade entre 0,01 e ${LIMITS.maxQuantity.toLocaleString('pt-BR')}`),
+    unit: z.string().max(20).optional(),
+    unitPrice: optionalMoney,
     order: z.number().int().nonnegative().default(0),
 })
 
-export const PackageSchema = z.object({
-    name: z.string().min(3, 'Nome do pacote obrigatório'),
-    description: z.string().optional(),
-    price: z.string().regex(/^\d+(\.\d{2})?$/, 'Preço inválido'),
-    isHighlighted: z.boolean().default(false),
-    highlightLabel: z.string().optional(),
-    highlightColor: z.string().optional(),
-    mediaUrl: z.string().optional(),
-    mediaType: z.string().optional(),
-    itemIds: z.array(z.string()).default([]),
-})
+export const PackageSchema = z
+    .object({
+        name: z.string().trim().min(2, 'Nome do pacote obrigatório').max(120),
+        description: z.string().max(2000).optional(),
+        priceMode: z.enum(['SUM_OF_ITEMS', 'FIXED', 'ON_REQUEST']).default('SUM_OF_ITEMS'),
+        fixedPrice: optionalMoney,
+        priceLabel: z.string().max(60).optional(),
+        discountType: z.enum(['NONE', 'PERCENT', 'AMOUNT']).default('NONE'),
+        discountInput: z.string().optional(),
+        isHighlighted: z.boolean().default(false),
+        highlightLabel: z.string().optional(),
+        highlightColor: z.string().optional(),
+        mediaUrl: z.string().optional(),
+        mediaType: z.string().optional(),
+        itemIds: z.array(z.string()).default([]),
+    })
+    .superRefine((data, ctx) => {
+        if (data.priceMode === 'FIXED' && (!data.fixedPrice?.trim() || parseMoneyToCents(data.fixedPrice) === null)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fixedPrice'], message: 'Informe o valor do pacote (ex.: 3.500,00)' })
+        }
+        if (data.discountType === 'PERCENT') {
+            const n = parseDecimalInput(data.discountInput)
+            if (n === null || n < 0 || n > 100) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountInput'], message: 'Percentual entre 0 e 100' })
+            }
+        }
+        if (data.discountType === 'AMOUNT' && (!data.discountInput?.trim() || parseMoneyToCents(data.discountInput) === null)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountInput'], message: 'Valor do desconto inválido' })
+        }
+    })
+
+/** Converte o formulário (valores em texto, formato brasileiro) para o contrato da API (centavos). */
+export function toPackagePayload(data: z.infer<typeof PackageSchema>) {
+    const percent = parseDecimalInput(data.discountInput)
+    return {
+        name: data.name,
+        description: data.description,
+        priceMode: data.priceMode,
+        fixedPriceCents: data.priceMode === 'FIXED' ? parseMoneyToCents(data.fixedPrice ?? '') : null,
+        priceLabel: data.priceLabel?.trim() || null,
+        discountType: data.discountType,
+        discountValue:
+            data.discountType === 'PERCENT'
+                ? Math.round((percent ?? 0) * 100)
+                : data.discountType === 'AMOUNT'
+                  ? parseMoneyToCents(data.discountInput ?? '') ?? 0
+                  : 0,
+        isHighlighted: data.isHighlighted,
+        highlightLabel: data.highlightLabel,
+        highlightColor: data.highlightColor,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType,
+    }
+}
+
+export function toPackageItemPayload(data: z.infer<typeof PackageItemSchema>) {
+    return {
+        name: data.name,
+        description: data.description?.trim() || null,
+        kind: data.kind,
+        quantity: parseDecimalInput(data.quantity) ?? 1,
+        unit: data.unit?.trim() || null,
+        unitPriceCents: data.unitPrice?.trim() ? parseMoneyToCents(data.unitPrice) ?? 0 : 0,
+        order: data.order,
+    }
+}
 
 export const ProposalSchema = z.object({
     clientName: z.string().min(3, 'Nome do cliente obrigatório'),
