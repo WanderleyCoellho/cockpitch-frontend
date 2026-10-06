@@ -7,12 +7,18 @@ import { useAuth } from '../context/AuthContext'
 import { RegisterSchema, type RegisterFormData } from '../../shared/schemas'
 import { SEGMENTS } from '../../shared/segments'
 import { FieldLabel } from '../components/help/HelpTip'
+import GoogleButton from '../components/auth/GoogleButton'
+import { clearPendingGoogle, readPendingGoogle, storePendingGoogle, type PendingGoogle } from '../components/auth/pendingGoogle'
+import { ApiError } from '../../infra/gateway/HttpGateway'
 
 export default function RegisterPage() {
     const navigate = useNavigate()
-    const { register: registerUser, loading, error: authError } = useAuth()
+    const { register: registerUser, loginWithGoogle, loading, error: authError } = useAuth()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [searchParams] = useSearchParams()
+    // Conectado com Google: só faltam empresa e segmento (sem senha).
+    const [google, setGoogle] = useState<PendingGoogle | null>(() => (searchParams.get('google') ? readPendingGoogle() : null))
+    const [googleError, setGoogleError] = useState<string | null>(null)
     // Cadastro a partir de um convite de equipe: entra direto na empresa de quem convidou.
     const inviteToken = searchParams.get('convite') ?? undefined
     const invitedEmail = searchParams.get('email') ?? ''
@@ -22,10 +28,49 @@ export default function RegisterPage() {
         handleSubmit,
         formState: { errors },
         setError,
+        getValues,
     } = useForm<RegisterFormData>({
         resolver: zodResolver(RegisterSchema),
         defaultValues: { email: invitedEmail, segment: 'GENERAL' },
     })
+
+    const finishWithGoogle = async (credential: string) => {
+        setGoogleError(null)
+        const workspaceName = getValues('workspaceName')?.trim()
+        if (!inviteToken && (!workspaceName || workspaceName.length < 2)) {
+            setGoogleError('Informe o nome da sua empresa (ou seu nome profissional) para concluir.')
+            return
+        }
+        setIsSubmitting(true)
+        try {
+            await loginWithGoogle(credential, inviteToken ? { inviteToken } : { workspaceName, segment: getValues('segment') })
+            clearPendingGoogle()
+            navigate('/dashboard')
+        } catch (err) {
+            setGoogleError(err instanceof Error ? err.message : 'Não foi possível criar a conta com Google.')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const onGoogle = async (credential: string) => {
+        setGoogleError(null)
+        // Convite ou empresa já preenchida: conclui direto. Senão, guarda e pede só a empresa.
+        if (inviteToken || (getValues('workspaceName')?.trim().length ?? 0) >= 2) return finishWithGoogle(credential)
+        try {
+            await loginWithGoogle(credential)
+            clearPendingGoogle()
+            navigate('/dashboard') // já tinha conta com esse Gmail
+        } catch (err) {
+            if (err instanceof ApiError && err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
+                const pending = { credential, email: err.details?.google?.email ?? '', name: err.details?.google?.name ?? '' }
+                storePendingGoogle(pending)
+                setGoogle(pending)
+                return
+            }
+            setGoogleError(err instanceof Error ? err.message : 'Não foi possível entrar com Google.')
+        }
+    }
 
     const onSubmit = async (data: RegisterFormData) => {
         setIsSubmitting(true)
@@ -91,8 +136,32 @@ export default function RegisterPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div>
+                    {googleError && (
+                        <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm inline-flex items-center gap-2 w-full">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {googleError}
+                        </div>
+                    )}
+
+                    {google ? (
+                        <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] text-sm">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#4285F4]">G</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-white/85 truncate">Conectado como {google.email || 'sua conta Google'}</p>
+                                <p className="text-xs text-white/45">Falta só {inviteToken ? 'confirmar' : 'o nome da empresa e o segmento'}.</p>
+                            </div>
+                            <button type="button" onClick={() => { clearPendingGoogle(); setGoogle(null) }} className="text-xs text-white/45 hover:text-white">
+                                Trocar
+                            </button>
+                        </div>
+                    ) : (
+                        <GoogleButton text="signup_with" onCredential={onGoogle} />
+                    )}
+
+                    <form
+                        onSubmit={google ? (e) => { e.preventDefault(); finishWithGoogle(google.credential) } : handleSubmit(onSubmit)}
+                        className="space-y-4"
+                    >
+                        {!google && <div>
                             <label className="block text-[10px] font-medium tracking-widest uppercase text-white/50 mb-1.5">Nome</label>
                             <input
                                 type="text"
@@ -103,7 +172,7 @@ export default function RegisterPage() {
                             {errors.name && (
                                 <p className="text-xs text-red-300 mt-1">{errors.name.message}</p>
                             )}
-                        </div>
+                        </div>}
 
                         {!inviteToken && (
                             <>
@@ -135,6 +204,7 @@ export default function RegisterPage() {
                             </>
                         )}
 
+                        {!google && <>
                         <div>
                             <label className="block text-[10px] font-medium tracking-widest uppercase text-white/50 mb-1.5">Email</label>
                             <input
@@ -161,6 +231,7 @@ export default function RegisterPage() {
                                 <p className="text-xs text-red-300 mt-1">{errors.password.message}</p>
                             )}
                         </div>
+                        </>}
 
                         <button
                             type="submit"
@@ -169,7 +240,7 @@ export default function RegisterPage() {
                         >
                             {isSubmitting || loading
                                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Criando conta...</>
-                                : <>Cadastrar <ArrowRight className="w-4 h-4" /></>}
+                                : <>{google ? 'Criar conta com Google' : 'Cadastrar'} <ArrowRight className="w-4 h-4" /></>}
                         </button>
                     </form>
 

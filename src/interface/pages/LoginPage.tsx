@@ -6,6 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, AlertTriangle, Loader2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LoginSchema, type LoginFormData } from '../../shared/schemas'
+import GoogleButton from '../components/auth/GoogleButton'
+import { ApiError } from '../../infra/gateway/HttpGateway'
+import { storePendingGoogle } from '../components/auth/pendingGoogle'
 
 export default function LoginPage() {
     const navigate = useNavigate()
@@ -13,8 +16,25 @@ export default function LoginPage() {
     // Só caminhos internos (evita redirecionamento aberto para sites externos).
     const redirectParam = searchParams.get('redirect')
     const redirectTo = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '/dashboard'
-    const { login, loading, error: authError } = useAuth()
+    const { login, loginWithGoogle, loading, error: authError } = useAuth()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [googleError, setGoogleError] = useState<string | null>(null)
+
+    const onGoogle = async (credential: string) => {
+        setGoogleError(null)
+        try {
+            await loginWithGoogle(credential)
+            navigate(redirectTo)
+        } catch (err) {
+            if (err instanceof ApiError && err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
+                // Gmail sem conta: leva ao cadastro já conectado ao Google (só falta a empresa).
+                storePendingGoogle({ credential, email: err.details?.google?.email ?? '', name: err.details?.google?.name ?? '' })
+                navigate('/register?google=1')
+                return
+            }
+            setGoogleError(err instanceof Error ? err.message : 'Não foi possível entrar com Google.')
+        }
+    }
 
     const {
         register,
@@ -84,6 +104,14 @@ export default function LoginPage() {
                             {authError}
                         </div>
                     )}
+
+                    {googleError && (
+                        <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm inline-flex items-center gap-2 w-full">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {googleError}
+                        </div>
+                    )}
+
+                    <GoogleButton text="signin_with" onCredential={onGoogle} />
 
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div>

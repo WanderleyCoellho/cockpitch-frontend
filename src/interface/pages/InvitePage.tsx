@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, ArrowRight, Loader2, Users } from 'lucide-react'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { useAuth } from '../context/AuthContext'
+import GoogleButton from '../components/auth/GoogleButton'
 
 const ROLE_TEXT = { ADMIN: 'como admin', MEMBER: 'como membro' } as const
 
@@ -11,7 +12,7 @@ const ROLE_TEXT = { ADMIN: 'como admin', MEMBER: 'como membro' } as const
 export default function InvitePage() {
     const { token = '' } = useParams()
     const navigate = useNavigate()
-    const { user, isAuthenticated, loading: authLoading, refreshUser, switchWorkspace, logout } = useAuth()
+    const { user, isAuthenticated, loading: authLoading, refreshUser, switchWorkspace, logout, loginWithGoogle } = useAuth()
     const [accepting, setAccepting] = useState(false)
     const [acceptError, setAcceptError] = useState<string | null>(null)
 
@@ -31,6 +32,20 @@ export default function InvitePage() {
             navigate('/dashboard')
         } catch (err) {
             setAcceptError(err instanceof Error ? err.message : 'Não foi possível aceitar o convite.')
+        } finally {
+            setAccepting(false)
+        }
+    }
+
+    // Google com o mesmo e-mail do convite: cria a conta (ou entra) e já entra na equipe.
+    const acceptWithGoogle = async (credential: string) => {
+        setAcceptError(null)
+        setAccepting(true)
+        try {
+            await loginWithGoogle(credential, { inviteToken: token })
+            navigate('/dashboard')
+        } catch (err) {
+            setAcceptError(err instanceof Error ? err.message : 'Não foi possível entrar com Google.')
         } finally {
             setAccepting(false)
         }
@@ -105,6 +120,7 @@ export default function InvitePage() {
 
                         {!isAuthenticated && (
                             <div className="space-y-3">
+                                <GoogleButton text="continue_with" onCredential={acceptWithGoogle} />
                                 <Link
                                     to={registerUrl}
                                     className="w-full py-3 px-4 bg-[#C9A84C] text-black rounded-xl font-semibold hover:bg-[#d8b65a] inline-flex items-center justify-center gap-2"

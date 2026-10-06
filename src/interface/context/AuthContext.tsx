@@ -11,6 +11,8 @@ type AuthContextType = {
     error: string | null
     login: (email: string, password: string) => Promise<void>
     register: (name: string, email: string, password: string, extra?: RegisterExtra) => Promise<void>
+    /** Entrar/cadastrar com Google (credencial do botão "Continuar com Google"). */
+    loginWithGoogle: (credential: string, extra?: RegisterExtra) => Promise<{ created: boolean; joinedWorkspaceId: string | null }>
     logout: () => Promise<void>
     refreshUser: () => Promise<void>
     /** Empresas de que o usuário participa e a ativa no momento. */
@@ -142,6 +144,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    const loginWithGoogle = async (credential: string, extra: RegisterExtra = {}) => {
+        setError(null)
+        // O caso "Gmail sem conta" é tratado pela tela (completar cadastro), sem virar erro global.
+        const result = await httpGateway.loginWithGoogle({ credential, ...extra })
+        startSession(result)
+        if (result.joinedWorkspaceId) {
+            setActiveWorkspaceId(result.joinedWorkspaceId)
+            storeWorkspace(result.joinedWorkspaceId)
+            httpGateway.setWorkspace(result.joinedWorkspaceId)
+        }
+        return { created: !!result.created, joinedWorkspaceId: result.joinedWorkspaceId ?? null }
+    }
+
     const logout = async () => {
         localStorage.removeItem(TOKEN_KEY)
         storeWorkspace(null)
@@ -168,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 error,
                 login,
                 register,
+                loginWithGoogle,
                 logout,
                 refreshUser,
                 workspaces,

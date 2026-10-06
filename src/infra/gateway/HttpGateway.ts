@@ -55,7 +55,9 @@ export class ApiError extends Error {
     constructor(
         public readonly status: number,
         message: string,
-        public readonly code?: string
+        public readonly code?: string,
+        /** Corpo da resposta de erro (ex.: dados do Google para completar o cadastro). */
+        public readonly details?: any
     ) {
         super(message)
         this.name = 'ApiError'
@@ -137,7 +139,7 @@ class HttpGateway {
                 // Sessão expirada/inválida: tratamento central (AuthContext escuta este evento).
                 window.dispatchEvent(new CustomEvent('auth:unauthorized'))
             }
-            throw new ApiError(response.status, extractErrorMessage(response.status, data), data?.code)
+            throw new ApiError(response.status, extractErrorMessage(response.status, data), data?.code, data)
         }
 
         return data as T
@@ -158,6 +160,27 @@ class HttpGateway {
         const result = await this.request<any>('POST', '/auth/login', { email, password }, false)
         if (result.token) this.setToken(result.token)
         return result
+    }
+
+    async getGoogleConfig(): Promise<{ enabled: boolean; clientId: string | null }> {
+        return this.request('GET', '/auth/google/config', undefined, false)
+    }
+
+    /** Entrar/cadastrar com Google. Gmail sem conta → ApiError GOOGLE_ACCOUNT_NOT_FOUND (details.google). */
+    async loginWithGoogle(body: { credential: string; workspaceName?: string; segment?: string; inviteToken?: string }) {
+        const result = await this.request<any>('POST', '/auth/google', body, false)
+        if (result.token) this.setToken(result.token)
+        return result
+    }
+
+    async getNotificationPreferences(): Promise<{ notifyOnOpen: boolean; notifyOnResponse: boolean }> {
+        const result = await this.request<any>('GET', '/workspaces/current/notifications')
+        return result.preferences
+    }
+
+    async updateNotificationPreferences(patch: { notifyOnOpen?: boolean; notifyOnResponse?: boolean }) {
+        const result = await this.request<any>('PATCH', '/workspaces/current/notifications', patch)
+        return result.preferences as { notifyOnOpen: boolean; notifyOnResponse: boolean }
     }
 
     async getMe() {
@@ -346,9 +369,10 @@ class HttpGateway {
                 sessionId: data.sessionId ?? `session-${Date.now()}`,
                 viewedAt: new Date().toISOString(),
             },
-            false
+            // Com sessão aberta, o servidor reconhece a própria equipe e não conta a abertura.
+            true
         )
-        return result.view
+        return result?.view ?? null
     }
 
     async updateCommercialStatus(

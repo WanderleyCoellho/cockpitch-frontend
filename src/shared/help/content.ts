@@ -145,4 +145,9 @@ export const HELP: Record<string, HelpEntry> = {
         title: 'Reabrir proposta',
         body: 'Depois do aceite, o link para de receber respostas. Reabra para o cliente poder aceitar de novo, por exemplo após um ajuste. O histórico continua guardado.',
     },
+    'team.notifications': {
+        area: 'Equipe',
+        title: 'Avisos por e-mail',
+        body: 'Você recebe um e-mail quando o cliente abre a proposta pela primeira vez e quando ele aceita, pede ajuste ou recusa. Responder o aviso escreve direto para o cliente.',
+    },
 }

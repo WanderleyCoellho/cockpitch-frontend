@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { usePlan } from '../context/PlanContext'
 import HelpTip, { FieldLabel } from '../components/help/HelpTip'
 import PlanSelector from '../components/PlanSelector'
+import NotificationPreferences from '../components/NotificationPreferences'
 import type { WorkspaceRole } from '../../shared/types'
 
 const ROLE_LABEL: Record<WorkspaceRole, string> = { OWNER: 'Dono', ADMIN: 'Admin', MEMBER: 'Membro' }
@@ -165,7 +166,7 @@ export default function TeamPage() {
                     {inviteLink && (
                         <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4 space-y-3">
                             <p className="text-sm text-emerald-200">
-                                Convite criado! Envie este link para a pessoa. Ele vale por 7 dias e só funciona com o e-mail convidado.
+                                Convite enviado por e-mail! Se preferir, copie o link e mande por outro canal. Ele vale por 7 dias e só funciona com o e-mail convidado.
                             </p>
                             <div className="flex gap-2 flex-wrap">
                                 <code className="flex-1 min-w-0 truncate rounded-lg bg-black/40 px-3 py-2 text-xs text-white/80">{inviteLink}</code>
@@ -273,6 +274,8 @@ export default function TeamPage() {
                     </ul>
                 </section>
             )}
+
+            <NotificationPreferences />
 
             {showPlans && <PlanSelector onClose={() => setShowPlans(false)} />}
         </div>
