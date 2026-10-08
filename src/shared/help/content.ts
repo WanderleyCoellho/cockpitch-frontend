@@ -114,6 +114,12 @@ export const HELP: Record<string, HelpEntry> = {
         title: 'Título da seção',
         body: 'Aparece em destaque no topo do bloco e no menu lateral da proposta. Deixe vazio para usar o título padrão do bloco.',
     },
+    'blocks.orderTips': {
+        area: 'Propostas',
+        article: 'ordem-e-biblioteca-de-blocos',
+        title: 'Dicas de ordem',
+        body: 'Sugestões baseadas em dados de mercado: comece pelo momento do cliente, mostre valor antes do preço e deixe dúvidas, contato e aceite depois dos pacotes. São só dicas: nada impede de salvar.',
+    },
     'blocks.coverMedia': {
         area: 'Propostas',
         article: 'capa-imagem-e-video',

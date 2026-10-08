@@ -227,6 +227,10 @@ export type Entitlements = {
     /** Escolher o link público da proposta (Profissional/Equipe). */
     customSlug?: boolean
     customTemplates: boolean
+    /** Biblioteca de blocos prontos no editor (Essencial+). */
+    blockLibrary?: boolean
+    /** Salvar blocos próprios para a equipe (Profissional+). */
+    savedBlocks?: boolean
     emailNotifications: boolean
     analytics: boolean
 }
@@ -280,4 +284,31 @@ export type AuthUser = {
     licensePolicyNote?: string | null
     activeWorkspaceId?: string | null
     workspaces?: WorkspaceSummary[]
+}
+
+/** Bloco pronto da biblioteca do sistema (vem de um modelo). Sem o plano, chega sem `block`. */
+export type BlockLibraryItem = {
+    id: string
+    type: import('./blocks').BlockType
+    title: string
+    templateId: string
+    templateName: string
+    theme: string
+    segment: string
+    block?: import('./blocks').ProposalBlock
+}
+
+export type SavedBlockItem = {
+    id: string
+    name: string
+    type: import('./blocks').BlockType
+    block: import('./blocks').ProposalBlock
+    createdById: string | null
+    createdAt: string
+}
+
+export type BlockLibrary = {
+    access: { blockLibrary: boolean; savedBlocks: boolean }
+    system: BlockLibraryItem[]
+    saved: SavedBlockItem[]
 }

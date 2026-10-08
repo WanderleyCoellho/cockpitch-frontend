@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd'
-import { ChevronDown, Copy, Eye, EyeOff, GripVertical, LayoutTemplate, Plus, Trash2, X } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { BookmarkPlus, ChevronDown, Copy, Eye, EyeOff, GripVertical, LayoutTemplate, Lightbulb, Plus, Trash2, X } from 'lucide-react'
+import { httpGateway } from '../../../../infra/gateway/HttpGateway'
+import { applyTipFix, blockOrderTips } from '../../../../shared/blockTips'
+import type { BlockLibrary } from '../../../../shared/types'
 import {
     BLOCK_META,
     BLOCK_TYPES,
@@ -16,6 +20,7 @@ import { BlockRenderer, visibleBlocks } from '../blocks/BlockRenderer'
 import type { BlockContext } from '../blocks/shared'
 import { ProposalThemeStyle, themeCssVars } from '../public/theme'
 import { BlockFields } from './BlockFields'
+import { SavedBlocksList, SystemLibraryList } from './BlockLibraryPanel'
 import { Field, TextInput } from './fields'
 
 const PREVIEW_WIDTH = 1180
@@ -61,33 +66,127 @@ function LivePreview({ blocks, ctx, focusId }: { blocks: ProposalBlock[]; ctx: B
     )
 }
 
-function AddBlockMenu({ blocks, onAdd, onClose }: { blocks: ProposalBlock[]; onAdd: (type: BlockType) => void; onClose: () => void }) {
+type AddTab = 'basic' | 'library' | 'saved'
+
+function AddBlockMenu({ blocks, library, onAdd, onInsert, onClose }: {
+    blocks: ProposalBlock[]
+    library?: BlockLibrary
+    onAdd: (type: BlockType) => void
+    onInsert: (block: ProposalBlock) => void
+    onClose: () => void
+}) {
+    const [tab, setTab] = useState<AddTab>('basic')
+    const takenSingles = useMemo(() => new Set(blocks.filter((b) => BLOCK_META[b.type].single).map((b) => b.type)), [blocks])
+    const tabs: Array<{ id: AddTab; label: string }> = [
+        { id: 'basic', label: 'Básicos' },
+        { id: 'library', label: 'Biblioteca' },
+        { id: 'saved', label: 'Salvos da empresa' },
+    ]
     return (
         <div className="rounded-2xl border border-white/12 bg-[#151515] p-3 shadow-2xl">
-            <div className="flex items-center justify-between mb-2 px-1">
-                <p className="text-xs font-semibold text-white/80">Adicionar bloco</p>
+            <div className="flex items-center justify-between gap-2 mb-2.5 px-1">
+                <div role="tablist" aria-label="Origem do bloco" className="flex gap-1">
+                    {tabs.map((t) => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={tab === t.id}
+                            onClick={() => setTab(t.id)}
+                            className={`text-xs px-2.5 py-1.5 rounded-lg ${tab === t.id ? 'bg-white/10 text-white font-semibold' : 'text-white/50 hover:text-white/80'}`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
                 <button type="button" onClick={onClose} aria-label="Fechar" className="p-1 rounded text-white/40 hover:text-white">
                     <X className="w-3.5 h-3.5" />
                 </button>
             </div>
-            <div className="grid sm:grid-cols-2 gap-1.5">
-                {BLOCK_TYPES.map((type) => {
-                    const meta = BLOCK_META[type]
-                    const taken = meta.single && blocks.some((b) => b.type === type)
-                    return (
-                        <button
-                            key={type}
-                            type="button"
-                            disabled={taken}
-                            onClick={() => onAdd(type)}
-                            className="text-left rounded-xl px-3 py-2.5 border border-transparent hover:border-[#C9A84C]/40 hover:bg-white/5 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-transparent"
-                        >
-                            <p className="text-sm text-white/90">{meta.label}{taken && <span className="text-[10px] text-white/40"> · já está na proposta</span>}</p>
-                            <p className="text-[11px] leading-snug text-white/40 mt-0.5">{meta.help}</p>
-                        </button>
-                    )
-                })}
+            {tab === 'basic' && (
+                <div className="grid sm:grid-cols-2 gap-1.5">
+                    {BLOCK_TYPES.map((type) => {
+                        const meta = BLOCK_META[type]
+                        const taken = meta.single && blocks.some((b) => b.type === type)
+                        return (
+                            <button
+                                key={type}
+                                type="button"
+                                disabled={taken}
+                                onClick={() => onAdd(type)}
+                                className="text-left rounded-xl px-3 py-2.5 border border-transparent hover:border-[#C9A84C]/40 hover:bg-white/5 disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-transparent"
+                            >
+                                <p className="text-sm text-white/90">{meta.label}{taken && <span className="text-[10px] text-white/40"> · já está na proposta</span>}</p>
+                                <p className="text-[11px] leading-snug text-white/40 mt-0.5">{meta.help}</p>
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
+            {tab !== 'basic' && !library && <p className="text-xs text-white/40 px-1 py-3">Carregando a biblioteca…</p>}
+            {tab === 'library' && library && <SystemLibraryList library={library} takenSingles={takenSingles} onInsert={onInsert} />}
+            {tab === 'saved' && library && <SavedBlocksList library={library} takenSingles={takenSingles} onInsert={onInsert} />}
+        </div>
+    )
+}
+
+const TIPS_HIDDEN_KEY = 'lumen-deal:block-tips-hidden'
+
+function readTipsHidden() {
+    try {
+        return window.localStorage.getItem(TIPS_HIDDEN_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+/** Dicas de ordem: sugestões de mercado, com ação de um clique. Nunca bloqueiam. */
+function OrderTips({ blocks, onChange }: { blocks: ProposalBlock[]; onChange: (blocks: ProposalBlock[]) => void }) {
+    const tips = useMemo(() => blockOrderTips(blocks), [blocks])
+    const [hidden, setHidden] = useState(readTipsHidden)
+    const toggle = (value: boolean) => {
+        setHidden(value)
+        try {
+            window.localStorage.setItem(TIPS_HIDDEN_KEY, value ? '1' : '0')
+        } catch {
+            /* sem armazenamento: vale só nesta tela */
+        }
+    }
+    if (tips.length === 0) return null
+    if (hidden) {
+        return (
+            <button type="button" onClick={() => toggle(false)} className="inline-flex items-center gap-1.5 text-[11px] text-white/40 hover:text-[#C9A84C]">
+                <Lightbulb className="w-3.5 h-3.5" /> Mostrar dicas de ordem ({tips.length})
+            </button>
+        )
+    }
+    return (
+        <div className="rounded-2xl border border-[#C9A84C]/20 bg-[#C9A84C]/[0.04] p-3 space-y-2" aria-live="polite">
+            <div className="flex items-center justify-between gap-2">
+                <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#e3c97a]">
+                    <Lightbulb className="w-3.5 h-3.5" /> Dicas de ordem
+                </p>
+                <div className="flex items-center gap-1">
+                    <HelpTip helpKey="blocks.orderTips" />
+                    <button type="button" onClick={() => toggle(true)} className="text-[11px] text-white/35 hover:text-white/70">Ocultar</button>
+                </div>
             </div>
+            <ul className="space-y-1.5">
+                {tips.map((tip) => (
+                    <li key={tip.id} className="flex items-start justify-between gap-3 text-xs text-white/65 leading-snug">
+                        <span>{tip.text}</span>
+                        {tip.fix && (
+                            <button
+                                type="button"
+                                onClick={() => onChange(applyTipFix(blocks, tip.fix!))}
+                                className="flex-shrink-0 rounded-lg border border-[#C9A84C]/35 px-2 py-1 text-[11px] font-medium text-[#C9A84C] hover:bg-[#C9A84C]/10"
+                            >
+                                {tip.fixLabel}
+                            </button>
+                        )}
+                    </li>
+                ))}
+            </ul>
         </div>
     )
 }
@@ -109,6 +208,9 @@ export function BlocksEditor({
     const [adding, setAdding] = useState(false)
     const [templateName, setTemplateName] = useState<string | null>(null)
     const [templateStatus, setTemplateStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+    const queryClient = useQueryClient()
+    const { data: library } = useQuery({ queryKey: ['block-library'], queryFn: () => httpGateway.getBlockLibrary(), staleTime: 60_000 })
+    const [saving, setSaving] = useState<{ id: string; name: string; status?: { kind: 'ok' | 'error'; text: string } } | null>(null)
 
     const update = (id: string, patch: Partial<ProposalBlock>) =>
         onChange(blocks.map((b) => (b.id === id ? ({ ...b, ...patch } as ProposalBlock) : b)))
@@ -121,15 +223,39 @@ export function BlocksEditor({
         onChange(next)
     }
 
-    const add = (type: BlockType) => {
-        const block = createBlock(type, blocks)
+    const place = (block: ProposalBlock) => {
         // Novo bloco entra antes do contato/chamada final, onde costuma fazer mais sentido.
         const tailIndex = blocks.findIndex((b, i) => i >= blocks.length - 2 && (b.type === 'contact' || b.type === 'cta'))
         const next = [...blocks]
-        next.splice(tailIndex >= 0 && type !== 'cta' && type !== 'contact' ? tailIndex : next.length, 0, block)
+        next.splice(tailIndex >= 0 && block.type !== 'cta' && block.type !== 'contact' ? tailIndex : next.length, 0, block)
         onChange(next)
         setOpenId(block.id)
         setAdding(false)
+    }
+
+    const add = (type: BlockType) => place(createBlock(type, blocks))
+
+    /** Bloco da biblioteca: entra como cópia; se o tipo só pode ter um (ex.: capa), substitui o atual. */
+    const insert = (source: ProposalBlock) => {
+        const existing = BLOCK_META[source.type].single ? blocks.find((b) => b.type === source.type) : undefined
+        if (existing) {
+            onChange(blocks.map((b) => (b.id === existing.id ? ({ ...structuredClone(source), id: existing.id, visible: existing.visible } as ProposalBlock) : b)))
+            setOpenId(existing.id)
+            setAdding(false)
+            return
+        }
+        place(duplicateBlock(source, blocks))
+    }
+
+    const submitSavedBlock = async (block: ProposalBlock) => {
+        if (!saving || saving.name.trim().length < 2) return
+        try {
+            await httpGateway.saveBlock(saving.name.trim(), block)
+            setSaving({ id: block.id, name: '', status: { kind: 'ok', text: 'Salvo. Está em Adicionar bloco → Salvos da empresa, para toda a equipe.' } })
+            void queryClient.invalidateQueries({ queryKey: ['block-library'] })
+        } catch (err) {
+            setSaving({ ...saving, status: { kind: 'error', text: err instanceof Error ? err.message : 'Não foi possível salvar o bloco.' } })
+        }
     }
 
     const submitTemplate = async () => {
@@ -158,6 +284,8 @@ export function BlocksEditor({
                     </div>
                     <span className="text-[11px] text-white/30">{blocks.length} / {MAX_BLOCKS}</span>
                 </div>
+
+                <OrderTips blocks={blocks} onChange={onChange} />
 
                 <DragDropContext onDragEnd={onDragEnd}>
                     <Droppable droppableId="blocks">
@@ -219,6 +347,28 @@ export function BlocksEditor({
                                                                 </Field>
                                                             )}
                                                             <BlockFields block={block} onChange={(data) => update(block.id, { data } as Partial<ProposalBlock>)} />
+                                                            {library?.access.savedBlocks && (
+                                                                <div className="pt-1 space-y-2">
+                                                                    {saving?.id === block.id && !saving.status?.kind.startsWith('ok') ? (
+                                                                        <div className="flex gap-2">
+                                                                            <TextInput value={saving.name} maxLength={80} placeholder="Nome na biblioteca (ex.: Contato do WhatsApp)" onChange={(name) => setSaving({ id: block.id, name })} />
+                                                                            <button type="button" onClick={() => submitSavedBlock(block)} disabled={saving.name.trim().length < 2} className="px-3.5 rounded-xl bg-[#C9A84C] text-black text-xs font-semibold disabled:opacity-40">
+                                                                                Salvar
+                                                                            </button>
+                                                                            <button type="button" onClick={() => setSaving(null)} className="px-2 text-white/40 hover:text-white" aria-label="Cancelar">
+                                                                                <X className="w-4 h-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button type="button" onClick={() => setSaving({ id: block.id, name: blockTitle(block) })} className="inline-flex items-center gap-1.5 text-xs text-[#C9A84C] hover:text-[#d8b65a]">
+                                                                            <BookmarkPlus className="w-3.5 h-3.5" /> Salvar na biblioteca da empresa
+                                                                        </button>
+                                                                    )}
+                                                                    {saving?.id === block.id && saving.status && (
+                                                                        <p className={`text-xs ${saving.status.kind === 'ok' ? 'text-emerald-300' : 'text-red-400'}`}>{saving.status.text}</p>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -233,7 +383,7 @@ export function BlocksEditor({
                 </DragDropContext>
 
                 {adding ? (
-                    <AddBlockMenu blocks={blocks} onAdd={add} onClose={() => setAdding(false)} />
+                    <AddBlockMenu blocks={blocks} library={library} onAdd={add} onInsert={insert} onClose={() => setAdding(false)} />
                 ) : (
                     <button
                         type="button"

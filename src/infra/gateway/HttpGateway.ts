@@ -3,7 +3,7 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
-import type { OnboardingStatus, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { BlockLibrary, OnboardingStatus, SavedBlockItem, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
 import type { ProposalBlock } from '../../shared/blocks'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -367,6 +367,20 @@ class HttpGateway {
 
     async deleteTemplate(templateId: string) {
         return this.request<void>('DELETE', `/templates/${templateId}`)
+    }
+
+    // ── Biblioteca de blocos ──
+    async getBlockLibrary(): Promise<BlockLibrary> {
+        return this.request('GET', '/block-library')
+    }
+
+    async saveBlock(name: string, block: ProposalBlock): Promise<SavedBlockItem> {
+        const result = await this.request<{ saved: SavedBlockItem }>('POST', '/block-library', { name, block })
+        return result.saved
+    }
+
+    async deleteSavedBlock(id: string) {
+        return this.request<void>('DELETE', `/block-library/${id}`)
     }
 
     async deleteProposal(proposalId: string) {

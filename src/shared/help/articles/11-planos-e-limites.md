@@ -8,6 +8,9 @@ O que muda entre os planos.
 | Arquivos | 500 MB | 5 GB | 20 GB | 100 GB |
 | Aceite online, PDF e avisos por e-mail | Sim | Sim | Sim | Sim |
 | Marca "Feito com Lumen Deal" | Aparece | Removida | Removida | Removida |
+| Temas e blocos básicos | Sim | Sim | Sim | Sim |
+| Biblioteca de blocos prontos | — | Sim | Sim | Sim |
+| Blocos salvos para a equipe | — | — | Sim | Sim |
 | Modelos próprios | — | — | Sim | Sim |
 | Link personalizado da proposta | — | — | Sim | Sim |
 

@@ -44,7 +44,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: 'STARTER',
         tagline: 'Para profissionais autônomos',
         limits: { proposalsPerMonth: 30, members: 1, storageGb: 5, analytics: true },
-        features: ['30 propostas por mês', '1 usuário', '5 GB de arquivos', 'Sem a marca Lumen Deal', 'Analytics de visualização', 'Tudo do Grátis'],
+        features: ['30 propostas por mês', '1 usuário', '5 GB de arquivos', 'Sem a marca Lumen Deal', 'Analytics de visualização', 'Biblioteca de blocos prontos', 'Tudo do Grátis'],
         highlighted: false,
     },
     pro: {
@@ -55,7 +55,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: 'PRO',
         tagline: 'Para pequenas empresas',
         limits: { proposalsPerMonth: -1, members: 3, storageGb: 20, analytics: true },
-        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Link personalizado (/p/seu-link)', 'Modelos próprios', 'Tudo do Essencial'],
+        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Link personalizado (/p/seu-link)', 'Modelos próprios', 'Blocos salvos para a equipe', 'Tudo do Essencial'],
         highlighted: true,
     },
     team: {

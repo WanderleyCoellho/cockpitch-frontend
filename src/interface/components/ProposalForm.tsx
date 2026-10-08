@@ -3,7 +3,7 @@ import { packagePriceText } from '../../shared/pricing'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { httpGateway } from '../../infra/gateway/HttpGateway'
+import { ApiError, httpGateway } from '../../infra/gateway/HttpGateway'
 import { ProposalSchema, type ProposalFormData } from '../../shared/schemas'
 import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ProposalTemplate, ThemeCustom } from '../../shared/types'
 import ThemeSelector from './proposal/ThemeSelector'
@@ -136,6 +136,13 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         queryFn: () => httpGateway.listPackages(providerId),
     })
 
+    // Link já usado por outra proposta: o servidor sugere um livre; já deixamos no campo para salvar de novo.
+    const applySlugSuggestion = (err: Error) => {
+        if (err instanceof ApiError && err.code === 'SLUG_TAKEN' && typeof err.details?.suggestion === 'string') {
+            setValue('slug', err.details.suggestion, { shouldDirty: true })
+        }
+    }
+
     const createMutation = useMutation({
         mutationFn: (data: ProposalFormData) =>
             httpGateway.createProposal({
@@ -154,6 +161,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
             onSuccess?.()
             onClose()
         },
+        onError: applySlugSuggestion,
     })
 
     const updateMutation = useMutation({
@@ -172,6 +180,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
             onSuccess?.()
             onClose()
         },
+        onError: applySlugSuggestion,
     })
 
     const handleFileChange = async (
