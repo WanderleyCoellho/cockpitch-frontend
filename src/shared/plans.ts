@@ -55,7 +55,7 @@ export const PLANS: Record<PlanId, Plan> = {
         checkoutTier: 'PRO',
         tagline: 'Para pequenas empresas',
         limits: { proposalsPerMonth: -1, members: 3, storageGb: 20, analytics: true },
-        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Modelos próprios', 'Tudo do Essencial'],
+        features: ['Propostas ilimitadas', 'Até 3 pessoas na equipe', '20 GB de arquivos', 'Link personalizado (/p/seu-link)', 'Modelos próprios', 'Tudo do Essencial'],
         highlighted: true,
     },
     team: {

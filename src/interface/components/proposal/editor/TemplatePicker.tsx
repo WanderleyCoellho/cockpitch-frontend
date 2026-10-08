@@ -134,8 +134,13 @@ export function TemplatePicker({ segment, canManage, onPick }: {
                 <div className="flex items-center justify-between">
                     <p className="text-[11px] uppercase tracking-widest text-white/40">{recommended.length ? 'Outros segmentos' : 'Modelos prontos'}</p>
                     {recommended.length > 0 && others.length > 0 && (
-                        <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs text-white/50 hover:text-white">
-                            {showAll ? 'Ocultar' : `Ver todos (${others.length})`}
+                        <button
+                            type="button"
+                            onClick={() => setShowAll((v) => !v)}
+                            aria-expanded={showAll}
+                            className="inline-flex items-center gap-1 rounded-full border border-[#C9A84C]/35 px-3 py-1 text-xs font-semibold text-[#C9A84C] hover:bg-[#C9A84C]/10 hover:text-[#d8b65a] transition"
+                        >
+                            {showAll ? 'Ocultar' : `Ver todos os modelos (${others.length})`}
                         </button>
                     )}
                 </div>

@@ -115,6 +115,9 @@ export type Proposal = {
     providerId: string
     clientName: string
     slug: string
+    /** Link copiado pelo painel: conta como "enviada" no Analytics. */
+    sharedAt?: string | null
+    views?: Array<{ id: string }>
     serviceDate?: string
     validityDays: number
     status: 'aberta' | 'fechada' | 'expirada' | 'arquivada'
@@ -221,6 +224,8 @@ export type Entitlements = {
     members: number
     storageGb: number
     removeBranding: boolean
+    /** Escolher o link público da proposta (Profissional/Equipe). */
+    customSlug?: boolean
     customTemplates: boolean
     emailNotifications: boolean
     analytics: boolean

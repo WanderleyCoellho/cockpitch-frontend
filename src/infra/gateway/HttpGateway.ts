@@ -339,6 +339,11 @@ class HttpGateway {
         return result.responses
     }
 
+    /** Marca a proposta como enviada (link copiado/compartilhado). Idempotente. */
+    async markProposalShared(proposalId: string) {
+        return this.request<{ sharedAt: string }>('POST', `/proposals/${proposalId}/shared`)
+    }
+
     async reopenProposal(proposalId: string) {
         return this.request<{ proposal: { id: string; status: string; commercialStatus: string } }>('POST', `/proposals/${proposalId}/reopen`)
     }

@@ -149,7 +149,17 @@ export default function PackageForm({ providerId, package: initialPackage, onClo
         }
     }
 
-    const onSubmit = (data: PackageFormData) => saveMutation.mutate(data)
+    const onSubmit = (data: PackageFormData) => {
+        setInvalidMessage(null)
+        saveMutation.mutate(data)
+    }
+    // Nunca falhar em silêncio: aponta o campo com problema ou o erro da API.
+    const [invalidMessage, setInvalidMessage] = useState<string | null>(null)
+    const onInvalid = (formErrors: Record<string, unknown>) => {
+        const names: Record<string, string> = { name: 'nome', fixedPrice: 'valor', discountInput: 'desconto' }
+        setInvalidMessage(`Revise: ${Object.keys(formErrors).map((field) => names[field] ?? field).join(', ')}.`)
+    }
+    const saveError = invalidMessage ?? (saveMutation.error instanceof Error ? saveMutation.error.message : saveMutation.isError ? 'Não foi possível salvar. Tente de novo.' : null)
 
     return (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-start justify-center z-50 py-8 overflow-y-auto">
@@ -172,7 +182,7 @@ export default function PackageForm({ providerId, package: initialPackage, onClo
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="p-6 space-y-4">
                     {/* Mídia */}
                     <div>
                         <label className="block text-sm font-medium text-white/80 mb-2">Mídia de Capa (opcional)</label>
@@ -496,6 +506,11 @@ export default function PackageForm({ providerId, package: initialPackage, onClo
                                 </div>
                             )}
                         </div>
+                        {saveError && (
+                            <p role="alert" className="text-xs text-red-400 sm:mr-auto">
+                                {saveError}
+                            </p>
+                        )}
                         <div className="flex gap-3">
                             <button
                                 type="button"

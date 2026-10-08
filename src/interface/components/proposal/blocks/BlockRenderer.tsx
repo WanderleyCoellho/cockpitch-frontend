@@ -10,7 +10,7 @@ import {
     TimelineBlockView,
 } from './ContentBlocks'
 import { ContactBlockView, FaqBlockView, GalleryBlockView, TestimonialsBlockView } from './InteractiveBlocks'
-import { SectionShell, type BlockContext } from './shared'
+import { BlockPreviewContext, SectionShell, type BlockContext } from './shared'
 import { AcceptanceBlockView } from './AcceptanceBlock'
 import { SelectionContext, useSelectionState, type ProposalSelection } from './selection'
 
@@ -46,6 +46,7 @@ function BlockView({ block, ctx, alt, nextId, selection }: { block: ProposalBloc
                     onPackageExpand={ctx.onPackageExpand}
                     sectionId={block.id}
                     title={block.title}
+                    eyebrow=""
                     intro={block.data.intro}
                     selection={selection}
                     acceptanceId={ctx.acceptance?.state === 'OPEN' || ctx.preview ? ctx.acceptanceId : undefined}
@@ -87,11 +88,13 @@ export function BlockRenderer({ blocks, ctx, selection: external }: { blocks: Pr
     // Fundo alternado entre seções; a capa e a chamada para ação têm fundo próprio e não contam.
     let index = 0
     return (
-        <SelectionContext.Provider value={selection}>
-            {blocks.map((block, i) => {
-                const alt = block.type === 'cover' || block.type === 'cta' ? false : index++ % 2 === 1
-                return <BlockView key={block.id} block={block} ctx={fullCtx} alt={alt} nextId={blocks[i + 1]?.id} selection={selection} />
-            })}
-        </SelectionContext.Provider>
+        <BlockPreviewContext.Provider value={!!ctx.preview}>
+            <SelectionContext.Provider value={selection}>
+                {blocks.map((block, i) => {
+                    const alt = block.type === 'cover' || block.type === 'cta' ? false : index++ % 2 === 1
+                    return <BlockView key={block.id} block={block} ctx={fullCtx} alt={alt} nextId={blocks[i + 1]?.id} selection={selection} />
+                })}
+            </SelectionContext.Provider>
+        </BlockPreviewContext.Provider>
     )
 }

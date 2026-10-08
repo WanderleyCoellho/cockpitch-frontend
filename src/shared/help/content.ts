@@ -114,6 +114,12 @@ export const HELP: Record<string, HelpEntry> = {
         title: 'Título da seção',
         body: 'Aparece em destaque no topo do bloco e no menu lateral da proposta. Deixe vazio para usar o título padrão do bloco.',
     },
+    'blocks.coverMedia': {
+        area: 'Propostas',
+        article: 'capa-imagem-e-video',
+        title: 'Imagem ou vídeo da capa',
+        body: 'Fundo da primeira tela da proposta. Imagem carrega rápido; vídeo toca sem som e em repetição. Ideal: 1920 × 1080, imagem até ~1 MB e vídeo MP4 até ~20 MB.',
+    },
     'blocks.media': {
         area: 'Propostas',
         article: 'criar-proposta',

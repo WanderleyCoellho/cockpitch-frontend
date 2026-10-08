@@ -1,5 +1,6 @@
 import type { Proposal } from '../../shared/types'
-import { BarChart3, CircleCheckBig, MessageSquareText, Send, Users, Gauge } from 'lucide-react'
+import { proposalFunnel } from '../../shared/proposalMetrics'
+import { BarChart3, CircleCheckBig, Eye, MessageSquareText, Send, Gauge } from 'lucide-react'
 
 type Props = {
     proposals: Proposal[]
@@ -14,21 +15,6 @@ type MetricCard = {
     variant: 'default' | 'success' | 'warning' | 'info'
 }
 
-function computeMetrics(proposals: Proposal[], providersCount: number) {
-    const total = proposals.length
-    const accepted = proposals.filter((p) => p.commercialStatus === 'aceita').length
-    const negotiating = proposals.filter((p) => p.commercialStatus === 'negociando').length
-    const denied = proposals.filter((p) => p.commercialStatus === 'negada').length
-    const noResponse = proposals.filter(
-        (p) => !p.commercialStatus || p.commercialStatus === 'sem_resposta'
-    ).length
-
-    const conversionRate = total > 0 ? Math.round((accepted / total) * 100) : 0
-    const responseRate = total > 0 ? Math.round(((total - noResponse) / total) * 100) : 0
-
-    return { total, accepted, negotiating, denied, noResponse, conversionRate, responseRate, providersCount }
-}
-
 const VARIANT_STYLES: Record<MetricCard['variant'], string> = {
     default: 'border-white/10 bg-white/2',
     success: 'border-emerald-500/30 bg-emerald-500/10',
@@ -37,50 +23,52 @@ const VARIANT_STYLES: Record<MetricCard['variant'], string> = {
 }
 
 export default function DashboardMetrics({ proposals, providersCount }: Props) {
-    const m = computeMetrics(proposals, providersCount)
+    const m = proposalFunnel(proposals)
+    void providersCount
 
     const cards: MetricCard[] = [
         {
-            label: 'Propostas Enviadas',
-            value: m.total,
-            subtext: 'Total acumulado',
+            label: 'Propostas enviadas',
+            value: m.sent,
+            // Só conta quando há sinal de envio: link copiado, aberta pelo cliente ou já respondida.
+            subtext: m.drafts ? `${m.drafts} ainda sem envio` : 'Link copiado ou aberto pelo cliente',
             icon: Send,
             variant: 'default',
         },
         {
-            label: 'Taxa de Conversão',
+            label: 'Abertas pelo cliente',
+            value: m.opened,
+            subtext: m.sent ? `${m.openRate}% das enviadas` : 'Nenhuma enviada ainda',
+            icon: Eye,
+            variant: m.openRate >= 50 ? 'info' : 'default',
+        },
+        {
+            label: 'Taxa de conversão',
             value: `${m.conversionRate}%`,
-            subtext: `${m.accepted} aceitas`,
+            subtext: `${m.accepted} aceitas de ${m.sent} enviadas`,
             icon: Gauge,
             variant: m.conversionRate >= 30 ? 'success' : m.conversionRate >= 10 ? 'warning' : 'default',
         },
         {
-            label: 'Em Negociação',
+            label: 'Em negociação',
             value: m.negotiating,
             subtext: 'Aguardando decisão',
             icon: MessageSquareText,
             variant: m.negotiating > 0 ? 'warning' : 'default',
         },
         {
-            label: 'Taxa de Resposta',
+            label: 'Taxa de resposta',
             value: `${m.responseRate}%`,
-            subtext: `${m.noResponse} sem resposta`,
+            subtext: `${m.sent - m.responded} enviadas sem resposta`,
             icon: BarChart3,
             variant: m.responseRate >= 50 ? 'info' : 'default',
         },
         {
-            label: 'Propostas Aceitas',
+            label: 'Propostas aceitas',
             value: m.accepted,
             subtext: 'Convertidas com sucesso',
             icon: CircleCheckBig,
             variant: 'success',
-        },
-        {
-            label: 'Prestadores Ativos',
-            value: m.providersCount,
-            subtext: 'Perfis cadastrados',
-            icon: Users,
-            variant: 'info',
         },
     ]
 
@@ -107,13 +95,14 @@ export default function DashboardMetrics({ proposals, providersCount }: Props) {
             </div>
 
             {/* Mini funil de conversão */}
-            {m.total > 0 && (
+            {m.sent > 0 && (
                 <div className="p-5 bg-white/2 border border-white/10 rounded-2xl">
                     <h3 className="text-sm font-medium text-white mb-3">Funil Comercial</h3>
                     <div className="space-y-2">
                         {[
-                            { label: 'Enviadas', count: m.total, color: 'bg-muted-foreground' },
-                            { label: 'Com resposta', count: m.total - m.noResponse, color: 'bg-blue-400' },
+                            { label: 'Enviadas', count: m.sent, color: 'bg-white/40' },
+                            { label: 'Abertas', count: m.opened, color: 'bg-[#C9A84C]' },
+                            { label: 'Com resposta', count: m.responded, color: 'bg-blue-400' },
                             { label: 'Negociando', count: m.negotiating, color: 'bg-amber-400' },
                             { label: 'Aceitas', count: m.accepted, color: 'bg-emerald-500' },
                         ].map(({ label, count, color }) => (
@@ -122,7 +111,7 @@ export default function DashboardMetrics({ proposals, providersCount }: Props) {
                                 <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                                     <div
                                         className={`h-full rounded-full ${color} transition-all`}
-                                        style={{ width: m.total > 0 ? `${(count / m.total) * 100}%` : '0%' }}
+                                        style={{ width: m.sent > 0 ? `${(count / m.sent) * 100}%` : '0%' }}
                                     />
                                 </div>
                                 <span className="text-xs font-medium text-white/75 w-6 text-right">{count}</span>

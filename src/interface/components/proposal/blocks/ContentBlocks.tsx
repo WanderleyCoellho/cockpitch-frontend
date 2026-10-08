@@ -162,7 +162,7 @@ export function ScopeBlockView({ block, ctx, alt }: { block: ScopeBlock; ctx: Bl
 
 export function TimelineBlockView({ block, ctx, alt }: { block: TimelineBlock; ctx: BlockContext; alt: boolean }) {
     return (
-        <SectionShell id={block.id} eyebrow="Etapas" title={blockTitle(block)} alt={alt} width="max-w-3xl">
+        <SectionShell id={block.id} eyebrow="Etapas" title={blockTitle(block)} alt={alt} width="max-w-3xl" backgroundUrl={block.data.backgroundUrl}>
             <ol className="relative">
                 <span className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background: 'var(--pp-border)' }} aria-hidden />
                 {block.data.steps.map((step, i) => (

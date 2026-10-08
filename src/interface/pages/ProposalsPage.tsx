@@ -79,11 +79,18 @@ export default function ProposalsPage() {
         refetch()
     }
 
-    const copyToClipboard = (slug: string) => {
-        const url = `${window.location.origin}/p/${slug}`
+    const copyToClipboard = (proposal: Proposal) => {
+        const url = `${window.location.origin}/p/${proposal.slug}`
         navigator.clipboard.writeText(url)
         updateOnboarding({ linkShared: true })
-        setCopiedSlug(slug)
+        // Copiar o link é o sinal de que a proposta vai para o cliente (conta como "enviada" no Analytics).
+        if (!proposal.sharedAt) {
+            httpGateway
+                .markProposalShared(proposal.id)
+                .then(() => queryClient.invalidateQueries({ queryKey: ['proposals'] }))
+                .catch(() => undefined)
+        }
+        setCopiedSlug(proposal.slug)
         setTimeout(() => setCopiedSlug(null), 2000)
     }
 
@@ -226,7 +233,7 @@ export default function ProposalsPage() {
                                                     <FileDown className="w-3.5 h-3.5" /> PDF
                                                 </a>
                                                 <button
-                                                    onClick={() => copyToClipboard(proposal.slug)}
+                                                    onClick={() => copyToClipboard(proposal)}
                                                     className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition ${copiedSlug === proposal.slug ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                                                 >
                                                     {copiedSlug === proposal.slug

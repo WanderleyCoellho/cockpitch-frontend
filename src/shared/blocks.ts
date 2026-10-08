@@ -19,7 +19,8 @@ export type PricingBlock = Base & { type: 'pricing'; data: { intro: string } }
 export type GalleryBlock = Base & { type: 'gallery'; data: { items: Array<{ url: string; type: MediaKind; caption: string }> } }
 export type TimelineBlock = Base & {
     type: 'timeline'
-    data: { steps: Array<{ title: string; description: string; duration: string }> }
+    /** backgroundUrl: imagem de fundo opcional (escurecida para manter a leitura). */
+    data: { steps: Array<{ title: string; description: string; duration: string }>; backgroundUrl?: string }
 }
 export type TestimonialsBlock = Base & {
     type: 'testimonials'

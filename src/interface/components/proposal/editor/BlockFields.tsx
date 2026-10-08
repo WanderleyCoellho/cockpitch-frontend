@@ -21,7 +21,7 @@ export function BlockFields({ block, onChange }: { block: ProposalBlock; onChang
                     <Field label="Subtítulo">
                         <TextArea value={block.data.subheadline} maxLength={300} rows={2} onChange={(subheadline) => set({ subheadline })} />
                     </Field>
-                    <Field label="Imagem ou vídeo de fundo" helpKey="blocks.media" hint="Vídeos tocam sem som, em repetição. Use arquivos leves (até ~20 MB).">
+                    <Field label="Imagem ou vídeo de fundo" helpKey="blocks.coverMedia" hint="Vídeos tocam sem som, em repetição. Use arquivos leves (até ~20 MB).">
                         <MediaInput
                             url={block.data.mediaUrl}
                             type={block.data.mediaType}
@@ -123,6 +123,16 @@ export function BlockFields({ block, onChange }: { block: ProposalBlock; onChang
         case 'timeline': {
             const set = patcher({ block, onChange })
             return (
+                <div className="space-y-4">
+                <Field label="Imagem de fundo (opcional)" helpKey="blocks.media" hint="Fica escurecida atrás das etapas para o texto continuar legível.">
+                    <MediaInput
+                        url={block.data.backgroundUrl}
+                        type={block.data.backgroundUrl ? 'image' : undefined}
+                        accept="image/*"
+                        label="Enviar imagem de fundo"
+                        onChange={(media) => set({ backgroundUrl: media?.url })}
+                    />
+                </Field>
                 <ListEditor
                     items={block.data.steps}
                     onChange={(steps) => set({ steps })}
@@ -140,6 +150,7 @@ export function BlockFields({ block, onChange }: { block: ProposalBlock; onChang
                         </>
                     )}
                 />
+                </div>
             )
         }
         case 'testimonials': {

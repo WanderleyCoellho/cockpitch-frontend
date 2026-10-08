@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { PlaceholderContext } from '../../../../shared/blocks'
 import type { AcceptanceState, Package, PackageItem, Provider } from '../../../../shared/types'
@@ -46,6 +46,26 @@ export function Reveal({ children, delay = 0, className, as = 'div' }: { childre
     )
 }
 
+/**
+ * Pré-visualização do editor: o rótulo do tipo de bloco ("Escopo", "Etapas"...) aparece só ali,
+ * para orientar a revisão. Na proposta enviada, o cliente vê apenas o título escolhido.
+ */
+export const BlockPreviewContext = createContext(false)
+
+export function BlockTypeLabel({ children }: { children: ReactNode }) {
+    const preview = useContext(BlockPreviewContext)
+    if (!preview || !children) return null
+    return (
+        <p
+            className="pp-body mx-auto mb-3 inline-block rounded-full border border-dashed px-2.5 py-0.5 text-[10px] tracking-widest uppercase font-medium"
+            style={{ color: 'var(--pp-accent)', borderColor: 'color-mix(in srgb, var(--pp-accent) 45%, transparent)' }}
+            title="Rótulo do tipo de bloco: aparece só na revisão, não para o cliente."
+        >
+            {children} · só na revisão
+        </p>
+    )
+}
+
 export function SectionShell({
     id,
     eyebrow,
@@ -53,6 +73,7 @@ export function SectionShell({
     children,
     alt = false,
     width = 'max-w-5xl',
+    backgroundUrl,
 }: {
     id: string
     eyebrow?: string
@@ -61,22 +82,27 @@ export function SectionShell({
     /** Alterna o fundo entre seções para dar ritmo à página. */
     alt?: boolean
     width?: string
+    /** Imagem de fundo opcional, coberta por um véu da cor do tema (o texto continua legível). */
+    backgroundUrl?: string
 }) {
+    const base = alt ? 'var(--pp-card-bg)' : 'var(--pp-bg)'
     return (
         <section
             id={id}
             data-section={id}
-            className="px-6 py-20 md:py-28 scroll-mt-20"
-            style={{ background: alt ? 'var(--pp-card-bg)' : 'var(--pp-bg)' }}
+            className="relative isolate overflow-hidden px-6 py-20 md:py-28 scroll-mt-20"
+            style={{ background: base }}
         >
+            {backgroundUrl && (
+                <>
+                    <img src={backgroundUrl} alt="" aria-hidden className="absolute inset-0 -z-10 h-full w-full object-cover" />
+                    <div aria-hidden className="absolute inset-0 -z-10" style={{ background: `color-mix(in srgb, ${base} 72%, transparent)` }} />
+                </>
+            )}
             <div className={`${width} mx-auto`}>
                 {(eyebrow || title) && (
                     <Reveal className="text-center mb-12 md:mb-16">
-                        {eyebrow && (
-                            <p className="pp-body text-xs tracking-widest uppercase mb-3 font-medium" style={{ color: 'var(--pp-accent)' }}>
-                                {eyebrow}
-                            </p>
-                        )}
+                        <BlockTypeLabel>{eyebrow}</BlockTypeLabel>
                         {title && (
                             <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>
                                 {title}

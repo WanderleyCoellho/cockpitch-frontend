@@ -6,6 +6,8 @@ import { httpGateway } from '../../infra/gateway/HttpGateway'
 import DashboardMetrics from '../components/DashboardMetrics'
 import PlanSelector from '../components/PlanSelector'
 import { usePlan } from '../context/PlanContext'
+import { proposalFunnel } from '../../shared/proposalMetrics'
+import type { Proposal } from '../../shared/types'
 import { ChartSpline, Lock, Sparkles, BarChart3, ArrowRight } from 'lucide-react'
 
 export default function AnalyticsPage() {
@@ -80,9 +82,7 @@ export default function AnalyticsPage() {
     })
 
     const canViewAnalytics = entitlements?.analytics ?? currentPlan.limits.analytics
-    const accepted = proposals.filter((proposal: any) => proposal.commercialStatus === 'aceita').length
-    const negotiating = proposals.filter((proposal: any) => proposal.commercialStatus === 'negociando').length
-    const conversionRate = proposals.length ? Math.round((accepted / proposals.length) * 100) : 0
+    const { sent, accepted, negotiating, conversionRate } = proposalFunnel(proposals as Proposal[])
 
     return (
         <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -135,8 +135,8 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                     <BarChart3 className="w-4 h-4 text-[#C9A84C] mb-3" />
-                    <p className="text-2xl font-light text-white">{proposals.length}</p>
-                    <p className="text-xs text-white/40 mt-1">Propostas mapeadas</p>
+                    <p className="text-2xl font-light text-white">{sent}</p>
+                    <p className="text-xs text-white/40 mt-1">Propostas enviadas</p>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                     <Sparkles className="w-4 h-4 text-emerald-400 mb-3" />

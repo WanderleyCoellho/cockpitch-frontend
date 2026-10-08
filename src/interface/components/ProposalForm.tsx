@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { ProposalSchema, type ProposalFormData } from '../../shared/schemas'
-import { slugify } from '../../shared/utils'
 import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ProposalTemplate, ThemeCustom } from '../../shared/types'
 import ThemeSelector from './proposal/ThemeSelector'
 import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
@@ -28,6 +27,18 @@ type ProposalFormProps = {
 }
 
 type Tab = 'info' | 'packages' | 'page' | 'media' | 'visual' | 'content' | 'responses'
+
+/** Link público: minúsculas, números e hífen. `typing` mantém o hífen final enquanto a pessoa digita. */
+function toSlug(text: string, typing = false) {
+    const slug = text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+/, '')
+        .slice(0, 80)
+    return typing ? slug : slug.replace(/-+$/, '')
+}
 
 function isLikelyVideoUrl(url: string): boolean {
     return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
@@ -111,12 +122,12 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
     const heroVideoUrl = watch('heroVideoUrl')
     const weddingPhotoUrl = watch('weddingPhotoUrl')
 
-    // Auto-generate slug no blur
+    // Link personalizado (Profissional/Equipe): sugere a partir do nome do cliente enquanto a pessoa não editar.
+    const customSlug = !!entitlements?.customSlug
+    const [slugTouched, setSlugTouched] = useState(!!proposal)
     const handleClientNameChange = (e: React.FocusEvent<HTMLInputElement>) => {
         const name = e.target.value
-        if (name) {
-            setValue('slug', slugify(`${name}-${Date.now()}`))
-        }
+        if (customSlug && name && !slugTouched) setValue('slug', toSlug(name))
     }
 
     // Fetch packages do provider
@@ -129,6 +140,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         mutationFn: (data: ProposalFormData) =>
             httpGateway.createProposal({
                 ...data,
+                slug: customSlug ? toSlug(data.slug ?? '') || undefined : undefined,
                 providerId,
                 backstageMedia,
                 differentialsMedia,
@@ -418,30 +430,41 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium tracking-widest uppercase text-white/55 mb-2">Link público (slug)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            className="w-full px-4 py-3 border border-white/8 rounded-xl bg-white/3 text-white/40 focus:outline-none font-mono text-sm pr-10"
-                                            {...register('slug')}
-                                        />
-                                        {watch('slug') && (
-                                            <a
-                                                href={`/p/${watch('slug')}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-[#C9A84C]/70 transition-colors"
-                                                title="Abrir proposta"
-                                            >
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </a>
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-white/25 mt-1">Gerado automaticamente ao digitar o nome</p>
-                                    {errors.slug && (
-                                        <p className="text-xs text-red-400 mt-1">{errors.slug.message}</p>
+                                    <label htmlFor="proposal-slug" className="block text-xs font-medium tracking-widest uppercase text-white/55 mb-2">Link da proposta</label>
+                                    {customSlug ? (
+                                        <div className="flex items-stretch rounded-xl border border-white/10 bg-white/5 focus-within:border-[#C9A84C]/50 overflow-hidden">
+                                            <span className="hidden sm:flex items-center pl-4 pr-1 text-xs text-white/35 font-mono whitespace-nowrap">{window.location.host}/p/</span>
+                                            <input
+                                                id="proposal-slug"
+                                                type="text"
+                                                placeholder="maria-e-joao"
+                                                className="min-w-0 flex-1 bg-transparent px-3 sm:px-1 py-3 text-white font-mono text-sm focus:outline-none"
+                                                {...register('slug', {
+                                                    onChange: (e) => {
+                                                        setSlugTouched(true)
+                                                        setValue('slug', toSlug(e.target.value, true))
+                                                    },
+                                                })}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-3">
+                                            <span className="truncate font-mono text-sm text-white/45">
+                                                {proposal?.slug ? `/p/${proposal.slug}` : 'Gerado automaticamente ao salvar'}
+                                            </span>
+                                            {proposal?.slug && (
+                                                <a href={`/p/${proposal.slug}`} target="_blank" rel="noreferrer" className="text-white/30 hover:text-[#C9A84C]" title="Abrir proposta">
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </a>
+                                            )}
+                                        </div>
                                     )}
+                                    {errors.slug && <p className="text-xs text-red-400 mt-1.5">{errors.slug.message}</p>}
+                                    <p className="mt-1.5 text-[11px] text-white/35">
+                                        {customSlug
+                                            ? 'É o endereço que o cliente recebe. Trocar depois de enviar quebra o link antigo.'
+                                            : 'Escolher o link (ex.: /p/maria-e-joao) é um recurso dos planos Profissional e Equipe.'}
+                                    </p>
                                 </div>
                             </div>
 

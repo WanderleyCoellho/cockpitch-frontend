@@ -78,17 +78,18 @@ export const PackageItemSchema = z.object({
 export const PackageSchema = z
     .object({
         name: z.string().trim().min(2, 'Nome do pacote obrigatório').max(120),
-        description: z.string().max(2000).optional(),
+        // Campos opcionais aceitam null: é o que volta do banco quando ficaram vazios (sem isso, editar de novo não salvava).
+        description: z.string().max(2000).nullish(),
         priceMode: z.enum(['SUM_OF_ITEMS', 'FIXED', 'ON_REQUEST']).default('SUM_OF_ITEMS'),
         fixedPrice: optionalMoney,
-        priceLabel: z.string().max(60).optional(),
+        priceLabel: z.string().max(60).nullish(),
         discountType: z.enum(['NONE', 'PERCENT', 'AMOUNT']).default('NONE'),
-        discountInput: z.string().optional(),
+        discountInput: z.string().nullish(),
         isHighlighted: z.boolean().default(false),
-        highlightLabel: z.string().optional(),
-        highlightColor: z.string().optional(),
-        mediaUrl: z.string().optional(),
-        mediaType: z.string().optional(),
+        highlightLabel: z.string().nullish(),
+        highlightColor: z.string().nullish(),
+        mediaUrl: z.string().nullish(),
+        mediaType: z.string().nullish(),
         itemIds: z.array(z.string()).default([]),
     })
     .superRefine((data, ctx) => {
@@ -111,7 +112,7 @@ export function toPackagePayload(data: z.infer<typeof PackageSchema>) {
     const percent = parseDecimalInput(data.discountInput)
     return {
         name: data.name,
-        description: data.description,
+        description: data.description?.trim() || null,
         priceMode: data.priceMode,
         fixedPriceCents: data.priceMode === 'FIXED' ? parseMoneyToCents(data.fixedPrice ?? '') : null,
         priceLabel: data.priceLabel?.trim() || null,
@@ -123,10 +124,10 @@ export function toPackagePayload(data: z.infer<typeof PackageSchema>) {
                   ? parseMoneyToCents(data.discountInput ?? '') ?? 0
                   : 0,
         isHighlighted: data.isHighlighted,
-        highlightLabel: data.highlightLabel,
-        highlightColor: data.highlightColor,
-        mediaUrl: data.mediaUrl,
-        mediaType: data.mediaType,
+        highlightLabel: data.highlightLabel?.trim() || null,
+        highlightColor: data.highlightColor || null,
+        mediaUrl: data.mediaUrl || null,
+        mediaType: data.mediaUrl ? data.mediaType || null : null,
     }
 }
 
@@ -144,12 +145,17 @@ export function toPackageItemPayload(data: z.infer<typeof PackageItemSchema>) {
 
 export const ProposalSchema = z.object({
     clientName: z.string().min(3, 'Nome do cliente obrigatório'),
-    slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras, números e hífen'),
-    serviceDate: z.string().optional(),
+    // Link público: livre nos planos Profissional/Equipe; nos demais o servidor gera ao salvar.
+    slug: z
+        .string()
+        .regex(/^([a-z0-9][a-z0-9-]{1,78}[a-z0-9])?$/, 'Use letras minúsculas, números e hífen (3 a 80)')
+        .optional(),
+    serviceDate: z.string().nullish(),
     validityDays: z.number().int().positive().default(30),
     packageIds: z.array(z.string()).default([]),
-    heroVideoUrl: z.string().optional(),
-    weddingPhotoUrl: z.string().optional(),
+    // null = vazio vindo do banco; "" = removido no formulário (a API apaga).
+    heroVideoUrl: z.string().nullish(),
+    weddingPhotoUrl: z.string().nullish(),
     backstageMedia: z.array(z.object({ url: z.string(), type: z.string() })).default([]),
     differentialsMedia: z.array(z.object({ url: z.string(), type: z.string() })).default([]),
     theme: z.string().optional(),

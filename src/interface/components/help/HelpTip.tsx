@@ -37,7 +37,13 @@ export default function HelpTip({ helpKey, side = 'top' }: { helpKey: string; si
                         <p className="text-xs font-semibold text-[#C9A84C]">{entry.title}</p>
                         <p className="mt-1 text-xs leading-relaxed text-white/75">{entry.body}</p>
                         {entry.article && (
-                            <Link to={`/ajuda/${entry.article}`} className="mt-2 inline-block text-[11px] font-medium text-[#C9A84C] hover:underline">
+                            // Abre em outra aba: a dica aparece no meio de formulários e não pode descartar o que não foi salvo.
+                            <Link
+                                to={`/ajuda/${entry.article}`}
+                                target="_blank"
+                                rel="noopener"
+                                className="mt-2 inline-block text-[11px] font-medium text-[#C9A84C] hover:underline"
+                            >
                                 Saiba mais →
                             </Link>
                         )}

@@ -4,6 +4,7 @@ import { calculatePackagePricing, formatCents, formatQuantity, lineTotalCents, p
 import type { Package, PackageItem, Proposal, Provider } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
 import type { ProposalSelection } from '../blocks/selection'
+import { BlockTypeLabel } from '../blocks/shared'
 
 interface PackagesSectionProps {
     proposal: Pick<Proposal, 'clientName'>
@@ -53,7 +54,9 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
         <section id={sectionId} data-section={sectionId} className="px-6 py-24 md:py-32" style={{ background: 'var(--pp-bg)' }}>
             <div className="max-w-5xl mx-auto">
                 <div className="text-center mb-16">
-                    <p className="pp-body text-xs tracking-widest uppercase mb-3 font-medium" style={{ color: 'var(--pp-accent)' }}>{eyebrow}</p>
+                    {/* Página em blocos: o rótulo só aparece na revisão do editor. */}
+                    {!eyebrow && <BlockTypeLabel>Investimento</BlockTypeLabel>}
+                    {eyebrow && <p className="pp-body text-xs tracking-widest uppercase mb-3 font-medium" style={{ color: 'var(--pp-accent)' }}>{eyebrow}</p>}
                     <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>{title || packageLabel}</h2>
                     <div className="pp-divider mb-4" />
                     {intro && (
@@ -61,7 +64,8 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                     )}
                     <p className="pp-body text-sm" style={{ color: 'var(--pp-muted)' }}>Toque em um {packageLabelSingular.toLowerCase()} para ver os detalhes</p>
                 </div>
-                <div className={`grid gap-6 ${packages.length === 1 ? 'max-w-sm mx-auto' : packages.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'md:grid-cols-3'}`}>
+                {/* items-start: abrir um pacote não estica o vizinho da mesma linha (parecia que os dois abriam). */}
+                <div className={`grid items-start gap-6 ${packages.length === 1 ? 'max-w-sm mx-auto' : packages.length === 2 ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'md:grid-cols-3'}`}>
                     {packages.map((pkg) => {
                         const isOpen = !!expanded[pkg.id]
                         const chosen = (selection ? selection.optionals : selectedOptionals)[pkg.id] ?? []
@@ -115,9 +119,9 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                                 )}
                                 {/* Media Background */}
                                 {hasMedia && pkg.mediaType === 'video' ? (
-                                    <video src={pkg.mediaUrl} autoPlay loop muted className="absolute inset-0 w-full h-full object-contain" />
+                                    <video src={pkg.mediaUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
                                 ) : hasMedia && pkg.mediaType === 'image' ? (
-                                    <img src={pkg.mediaUrl} alt={pkg.name} className="absolute inset-0 w-full h-full object-contain" />
+                                    <img src={pkg.mediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                                 ) : null}
 
                                 {/* Overlay */}
