@@ -66,6 +66,21 @@ export function BlockTypeLabel({ children }: { children: ReactNode }) {
     )
 }
 
+/**
+ * Título com a última palavra marcada (.pp-hl): cada tema decide se ela ganha cor, itálico,
+ * caixa de destaque ou nada.
+ */
+export function Headline({ text }: { text: string }) {
+    const trimmed = text.trim()
+    const cut = trimmed.lastIndexOf(' ')
+    if (cut <= 0) return <span className="pp-hl">{trimmed}</span>
+    return (
+        <>
+            {trimmed.slice(0, cut)} <span className="pp-hl">{trimmed.slice(cut + 1)}</span>
+        </>
+    )
+}
+
 export function SectionShell({
     id,
     eyebrow,
@@ -85,12 +100,12 @@ export function SectionShell({
     /** Imagem de fundo opcional, coberta por um véu da cor do tema (o texto continua legível). */
     backgroundUrl?: string
 }) {
-    const base = alt ? 'var(--pp-card-bg)' : 'var(--pp-bg)'
+    const base = alt ? 'var(--pp-alt-bg)' : 'var(--pp-bg)'
     return (
         <section
             id={id}
             data-section={id}
-            className="relative isolate overflow-hidden px-6 py-20 md:py-28 scroll-mt-20"
+            className={`relative isolate overflow-hidden px-6 py-20 md:py-28 scroll-mt-20 ${alt ? 'pp-alt' : ''}`}
             style={{ background: base }}
         >
             {backgroundUrl && (
@@ -104,8 +119,8 @@ export function SectionShell({
                     <Reveal className="text-center mb-12 md:mb-16">
                         <BlockTypeLabel>{eyebrow}</BlockTypeLabel>
                         {title && (
-                            <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>
-                                {title}
+                            <h2 className="pp-heading pp-title text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>
+                                <Headline text={title} />
                             </h2>
                         )}
                         <div className="pp-divider" />

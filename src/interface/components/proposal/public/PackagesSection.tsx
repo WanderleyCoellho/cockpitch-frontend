@@ -4,7 +4,7 @@ import { calculatePackagePricing, formatCents, formatQuantity, lineTotalCents, p
 import type { Package, PackageItem, Proposal, Provider } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
 import type { ProposalSelection } from '../blocks/selection'
-import { BlockTypeLabel } from '../blocks/shared'
+import { BlockTypeLabel, Headline } from '../blocks/shared'
 
 interface PackagesSectionProps {
     proposal: Pick<Proposal, 'clientName'>
@@ -51,13 +51,18 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
     if (!packages || packages.length === 0) return null
 
     return (
-        <section id={sectionId} data-section={sectionId} className="px-6 py-24 md:py-32" style={{ background: 'var(--pp-bg)' }}>
-            <div className="max-w-5xl mx-auto">
-                <div className="text-center mb-16">
+        <section id={sectionId} data-section={sectionId} className="pp-pricing relative isolate overflow-hidden px-6 py-24 md:py-32" style={{ background: 'var(--pp-bg)' }}>
+            <div aria-hidden className="pp-decor-glow hidden" />
+            <div className="relative max-w-5xl mx-auto">
+                <div className="pp-pricing-head relative isolate text-center mb-16">
+                    {/* Palavra gigante vazada atrás do título (temas com essa decoração). */}
+                    <span aria-hidden className="pp-outline-word pp-heading hidden">{title || packageLabel}</span>
                     {/* Página em blocos: o rótulo só aparece na revisão do editor. */}
                     {!eyebrow && <BlockTypeLabel>Investimento</BlockTypeLabel>}
                     {eyebrow && <p className="pp-body text-xs tracking-widest uppercase mb-3 font-medium" style={{ color: 'var(--pp-accent)' }}>{eyebrow}</p>}
-                    <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>{title || packageLabel}</h2>
+                    <h2 className="pp-heading pp-title text-3xl md:text-4xl font-light italic mb-4" style={{ color: 'var(--pp-text)' }}>
+                        <Headline text={title || packageLabel} />
+                    </h2>
                     <div className="pp-divider mb-4" />
                     {intro && (
                         <p className="pp-body text-sm leading-relaxed max-w-xl mx-auto mb-3 whitespace-pre-line" style={{ color: 'var(--pp-text)', opacity: 0.85 }}>{intro}</p>
@@ -103,7 +108,7 @@ export function PackagesSection({ proposal, packages, provider, tk, onPackageExp
                                 onClick={() => toggle(pkg.id)}
                                 style={{
                                     background: pkg.isHighlighted
-                                        ? `linear-gradient(135deg, ${pkg.highlightColor ?? tk.accent}15 0%, ${tk.card_bg} 70%)`
+                                        ? `linear-gradient(135deg, ${pkg.highlightColor ?? tk.accent}26 0%, transparent 70%), ${tk.card_bg}`
                                         : tk.card_bg,
                                     border: isChosen
                                         ? '2px solid var(--pp-accent)'

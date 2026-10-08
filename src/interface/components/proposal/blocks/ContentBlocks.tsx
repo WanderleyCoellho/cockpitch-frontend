@@ -14,7 +14,7 @@ import {
 } from '../../../../shared/blocks'
 import { sanitizeHtml } from '../../../../shared/sanitizeHtml'
 import { ImageAsset, MediaAsset } from '../public/media'
-import { Initial, Reveal, SectionShell, whatsappHref, type BlockContext } from './shared'
+import { Headline, Initial, Reveal, SectionShell, whatsappHref, type BlockContext } from './shared'
 
 function RichText({ html, ctx }: { html: string; ctx: BlockContext }) {
     return (
@@ -39,7 +39,8 @@ export function CoverBlockView({ block, ctx, nextId }: { block: CoverBlock; ctx:
         <section
             id={block.id}
             data-section={block.id}
-            className={`relative flex items-center justify-center overflow-hidden px-6 ${ctx.preview ? 'min-h-[560px] py-24' : 'min-h-[100svh] py-32'}`}
+            data-media={hasMedia ? '' : undefined}
+            className={`pp-cover relative isolate flex items-center justify-center overflow-hidden px-6 ${ctx.preview ? 'min-h-[560px] py-24' : 'min-h-[100svh] py-32'}`}
             style={{ background: 'var(--pp-bg)' }}
         >
             {hasMedia && (
@@ -53,7 +54,12 @@ export function CoverBlockView({ block, ctx, nextId }: { block: CoverBlock; ctx:
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 45%, var(--pp-bg) 100%)' }} />
                 </>
             )}
-            <div className="relative z-10 max-w-3xl text-center">
+            {/* Decorações do tema (brilho, formas, arco): escondidas, cada tema liga as suas. */}
+            <div aria-hidden className="pp-decor-glow hidden" />
+            <div aria-hidden className="pp-decor-arc hidden" />
+            <div aria-hidden className="pp-decor-shape1 hidden" />
+            <div aria-hidden className="pp-decor-shape2 hidden" />
+            <div className="pp-cover-content relative z-10 max-w-3xl text-center">
                 {data.showClientName && ctx.clientName && (
                     <motion.p {...fade(0)} className="pp-body text-xs tracking-[0.25em] uppercase mb-6 font-medium" style={{ color: 'var(--pp-accent)' }}>
                         Preparada para {ctx.clientName}
@@ -61,10 +67,10 @@ export function CoverBlockView({ block, ctx, nextId }: { block: CoverBlock; ctx:
                 )}
                 <motion.h1
                     {...fade(0.1)}
-                    className="pp-heading text-4xl md:text-6xl font-light italic leading-tight mb-6"
+                    className="pp-heading pp-title text-4xl md:text-6xl font-light italic leading-tight mb-6"
                     style={{ color: hasMedia ? '#fff' : 'var(--pp-text)' }}
                 >
-                    {fillPlaceholders(data.headline, ctx.placeholders)}
+                    <Headline text={fillPlaceholders(data.headline, ctx.placeholders)} />
                 </motion.h1>
                 {data.subheadline && (
                     <motion.p
@@ -253,7 +259,9 @@ export function CtaBlockView({ block, ctx }: { block: CtaBlock; ctx: BlockContex
                         border: '1px solid color-mix(in srgb, var(--pp-accent) 35%, transparent)',
                     }}
                 >
-                    <h2 className="pp-heading text-3xl md:text-4xl font-light italic mb-8" style={{ color: 'var(--pp-text)' }}>{headline}</h2>
+                    <h2 className="pp-heading pp-title text-3xl md:text-4xl font-light italic mb-8" style={{ color: 'var(--pp-text)' }}>
+                        <Headline text={headline} />
+                    </h2>
                     <a
                         href={href}
                         target={wa ? '_blank' : undefined}
