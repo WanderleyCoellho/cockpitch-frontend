@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { PlaceholderContext } from '../../../../shared/blocks'
-import type { AcceptanceState, Package, PackageItem, Provider } from '../../../../shared/types'
+import type { AcceptanceState, Package, PackageItem, ProposalSignatures, Provider } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
 
 export type BlockContext = {
@@ -18,6 +18,8 @@ export type BlockContext = {
     /** Link público (para enviar a resposta do cliente). */
     slug?: string
     acceptance?: AcceptanceState
+    /** Assinaturas da empresa e do cliente (página pública). */
+    signatures?: ProposalSignatures
     /** Avisa a página quando o cliente responde (cabeçalho e botões mudam na hora). */
     onAcceptanceChange?: (state: AcceptanceState) => void
     /** Plano sem a marca "Feito com Lumen Deal". */

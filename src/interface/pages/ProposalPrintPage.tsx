@@ -51,6 +51,19 @@ export default function ProposalPrintPage() {
         enabled: !!proposal && accepted && isAuthenticated,
     })
 
+    // Equipe logada: assinaturas com CPF completo. Para os demais, as da página pública (CPF mascarado).
+    const { data: teamSignatures, isFetched: signaturesFetched } = useQuery({
+        queryKey: ['proposal-signatures', proposal?.id, 'print'],
+        queryFn: async () => {
+            try {
+                return await httpGateway.getProposalSignatures(proposal!.id)
+            } catch {
+                return null
+            }
+        },
+        enabled: !!proposal && isAuthenticated,
+    })
+
     const provider = proposal?.provider as Provider | undefined
     const packages = (proposal?.packages ?? []) as Array<Package & { items?: PackageItem[] }>
 
@@ -71,7 +84,7 @@ export default function ProposalPrintPage() {
     }, [accepted, proposal, packages, params])
 
     const empresa = provider?.name ?? 'Empresa'
-    const ready = !!proposal && (!accepted || !isAuthenticated || evidenceFetched)
+    const ready = !!proposal && (!isAuthenticated || ((!accepted || evidenceFetched) && signaturesFetched))
 
     useEffect(() => {
         if (!proposal) return
@@ -118,6 +131,7 @@ export default function ProposalPrintPage() {
                         selection,
                         acceptance: proposal.acceptance,
                         acceptedEvidence: evidence ?? null,
+                        signatures: teamSignatures ?? proposal.signatures ?? null,
                         removeBranding: proposal.branding?.removeBranding ?? false,
                     }}
                 />

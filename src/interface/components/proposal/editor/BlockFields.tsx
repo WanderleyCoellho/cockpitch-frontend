@@ -254,9 +254,11 @@ export function BlockFields({ block, onChange }: { block: ProposalBlock; onChang
                         <div className="space-y-2.5">
                             <Toggle checked={block.data.allowChangeRequest} onChange={(allowChangeRequest) => set({ allowChangeRequest })} label="Pedir ajuste" />
                             <Toggle checked={block.data.allowDecline} onChange={(allowDecline) => set({ allowDecline })} label="Recusar" />
-                            <Toggle checked={block.data.requireDocument} onChange={(requireDocument) => set({ requireDocument })} label="Exigir CPF/CNPJ para aceitar" />
                         </div>
                     </Field>
+                    <p className="text-[11px] leading-snug text-white/45">
+                        Para aceitar, o cliente assina: informa o CPF, desenha ou digita a assinatura e confirma com um código enviado ao e-mail dele.
+                    </p>
                 </div>
             )
         }

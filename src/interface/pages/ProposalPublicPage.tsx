@@ -548,6 +548,7 @@ export default function ProposalPublicPage() {
                     onPackageExpand: handlePackageExpand,
                     slug: proposal.slug,
                     acceptance: proposal.acceptance,
+                    signatures: proposal.signatures,
                     removeBranding: proposal.branding?.removeBranding ?? false,
                 }}
             />

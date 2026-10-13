@@ -3,7 +3,7 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
-import type { BlockLibrary, OnboardingStatus, SavedBlockItem, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { BlockLibrary, OnboardingStatus, ProposalSignatures, SavedBlockItem, SavedSignatureProfile, SignatureDrawing, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
 import type { ProposalBlock } from '../../shared/blocks'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -303,7 +303,7 @@ class HttpGateway {
 
     async getPublicProposalBySlug(slug: string) {
         const result = await this.request<any>('GET', `/public/proposals/${slug}`, undefined, false)
-        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance, branding: result.branding }
+        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance, branding: result.branding, signatures: result.signatures as ProposalSignatures | undefined }
     }
 
     async createProposal(data: any) {
@@ -328,10 +328,35 @@ class HttpGateway {
             packageId?: string
             optionalItemIds?: string[]
             agreeTerms?: boolean
+            /** Aceite: assinatura e código enviado ao e-mail. */
+            signature?: SignatureDrawing
+            code?: string
         }
     ): Promise<Pick<ProposalResponse, 'id' | 'type' | 'createdAt' | 'totalCents' | 'selection' | 'contentHash'>> {
         const result = await this.request<{ response: ProposalResponse }>('POST', `/public/proposals/${encodeURIComponent(slug)}/responses`, body, false)
         return result.response
+    }
+
+    /** Envia ao cliente o código de 6 dígitos para assinar o aceite. */
+    async requestClientSignatureCode(slug: string, body: { signerName: string; signerEmail: string }) {
+        return this.request<{ sentTo: string; expiresAt: string }>('POST', `/public/proposals/${encodeURIComponent(slug)}/signature-code`, body, false)
+    }
+
+    // ── Assinatura da empresa ──
+    async getProposalSignatures(proposalId: string) {
+        return this.request<ProposalSignatures>('GET', `/proposals/${proposalId}/signatures`)
+    }
+
+    async requestProviderSignatureCode(proposalId: string) {
+        return this.request<{ sentTo: string; expiresAt: string }>('POST', `/proposals/${proposalId}/signature/code`)
+    }
+
+    async signProposal(proposalId: string, body: { code: string; cpf: string; signerTitle?: string; signature: SignatureDrawing; saveToProfile: boolean }) {
+        return this.request<ProposalSignatures>('POST', `/proposals/${proposalId}/signature`, body)
+    }
+
+    async getMySignature() {
+        return this.request<SavedSignatureProfile>('GET', '/me/signature')
     }
 
     async listProposalResponses(proposalId: string): Promise<ProposalResponse[]> {

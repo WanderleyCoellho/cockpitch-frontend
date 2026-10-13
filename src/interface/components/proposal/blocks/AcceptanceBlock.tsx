@@ -1,10 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CalendarX2, CheckCircle2, FileSignature, MessageSquareText, Printer, ThumbsDown } from 'lucide-react'
+import { BadgeCheck, CalendarX2, CheckCircle2, FileSignature, MailCheck, MessageSquareText, Printer, ThumbsDown } from 'lucide-react'
 import { httpGateway, ApiError } from '../../../../infra/gateway/HttpGateway'
 import { blockTitle, fillPlaceholders, type AcceptanceBlock } from '../../../../shared/blocks'
 import { calculatePackagePricing, formatCents } from '../../../../shared/pricing'
-import type { AcceptanceState, Package, PackageItem, ProposalResponseType } from '../../../../shared/types'
+import type { AcceptanceState, Package, PackageItem, ProposalResponseType, ProposalSignatureView, ProposalSignatures, SignatureDrawing } from '../../../../shared/types'
+import { isValidCpf, maskCpf } from '../../../../shared/cpf'
+import { SignaturePad } from '../../signature/SignaturePad'
+import { SignatureMark } from '../../signature/SignatureMark'
 import { useProposalSelection } from './selection'
 import { printUrl } from '../print/printUrl'
 import { Reveal, SectionShell, whatsappHref, type BlockContext } from './shared'
@@ -42,7 +45,20 @@ const MODES: Array<{ type: ProposalResponseType; label: string; Icon: typeof Fil
     { type: 'DECLINED', label: 'Recusar', Icon: ThumbsDown },
 ]
 
-type Result = { type: ProposalResponseType; total?: number | null; packageName?: string; optionals?: string[]; hash: string; at: string; name: string }
+type Result = { type: ProposalResponseType; total?: number | null; packageName?: string; optionals?: string[]; hash: string; at: string; name: string; signature?: ProposalSignatureView }
+
+/** As duas assinaturas lado a lado, como no pé de um contrato. */
+export function SignaturesPair({ signatures, company }: { signatures?: ProposalSignatures | null; company: string }) {
+    const provider = signatures?.provider?.current ? signatures.provider : null
+    return (
+        <div className="grid sm:grid-cols-2 gap-3">
+            <SignatureMark signature={provider} roleLabel={`Pela ${company}`} pendingText="Assinatura da empresa pendente" />
+            <SignatureMark signature={signatures?.client ?? null} roleLabel="Cliente" pendingText="Assina no aceite" />
+        </div>
+    )
+}
+
+const RESEND_SECONDS = 60
 
 export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBlock; ctx: BlockContext; alt: boolean }) {
     const selection = useProposalSelection()
@@ -52,6 +68,17 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
     const [error, setError] = useState<string | null>(null)
     const [state, setState] = useState<AcceptanceState | undefined>(ctx.acceptance)
     const [result, setResult] = useState<Result | null>(null)
+    // Assinatura: desenho ou nome digitado + código enviado ao e-mail.
+    const [signature, setSignature] = useState<SignatureDrawing | null>(null)
+    const [codeSentTo, setCodeSentTo] = useState<string | null>(null)
+    const [code, setCode] = useState('')
+    const [cooldown, setCooldown] = useState(0)
+
+    useEffect(() => {
+        if (cooldown <= 0) return
+        const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000)
+        return () => window.clearTimeout(timer)
+    }, [cooldown])
 
     const { data } = block
     const packages = ctx.packages
@@ -64,22 +91,48 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
     const contact = whatsappHref(ctx.provider, `Olá! Sobre a proposta para ${ctx.clientName}…`)
     const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
 
+    const emailNow = form.email.trim().toLowerCase()
+    const codeReady = !!codeSentTo && codeSentTo === emailNow
+
+    const sendCode = async () => {
+        if (!ctx.slug) return
+        setSending(true)
+        setError(null)
+        try {
+            const sent = await httpGateway.requestClientSignatureCode(ctx.slug, { signerName: form.name.trim(), signerEmail: emailNow })
+            setCodeSentTo(sent.sentTo)
+            setCode('')
+            setCooldown(RESEND_SECONDS)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Não foi possível enviar o código. Tente novamente.')
+        } finally {
+            setSending(false)
+        }
+    }
+
     const submit = async (event: FormEvent) => {
         event.preventDefault()
         if (ctx.preview || !ctx.slug) return
         setError(null)
-        if (mode === 'ACCEPTED' && packages.length > 1 && !selectedPkg) return setError('Escolha um dos pacotes acima para aceitar.')
-        if (mode === 'ACCEPTED' && !form.agree) return setError('Marque que leu e concorda com as condições.')
+        if (mode === 'ACCEPTED') {
+            if (packages.length > 1 && !selectedPkg) return setError('Escolha um dos pacotes acima para aceitar.')
+            if (!isValidCpf(form.document)) return setError('Informe um CPF válido de quem está assinando.')
+            if (!signature) return setError('Desenhe ou digite sua assinatura.')
+            if (!form.agree) return setError('Marque que leu e concorda com as condições.')
+            // 1º clique: envia o código ao e-mail. 2º: assina com o código.
+            if (!codeReady) return sendCode()
+            if (!/^\d{6}$/.test(code.trim())) return setError('Digite os 6 números do código enviado para o seu e-mail.')
+        }
         setSending(true)
         try {
             const response = await httpGateway.submitProposalResponse(ctx.slug, {
                 type: mode,
                 signerName: form.name,
                 signerEmail: form.email,
-                signerDocument: mode === 'ACCEPTED' && form.document.trim() ? form.document.trim() : undefined,
+                signerDocument: mode === 'ACCEPTED' ? form.document.trim() : undefined,
                 message: form.message.trim() || undefined,
                 ...(mode !== 'DECLINED' && selectedPkg ? { packageId: selectedPkg.id, optionalItemIds: optionalIds } : {}),
-                ...(mode === 'ACCEPTED' ? { agreeTerms: true } : {}),
+                ...(mode === 'ACCEPTED' && signature ? { agreeTerms: true, signature, code: code.trim() } : {}),
             })
             setResult({
                 type: mode,
@@ -89,6 +142,23 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                 hash: response.contentHash,
                 at: response.createdAt,
                 name: form.name,
+                signature:
+                    mode === 'ACCEPTED' && signature
+                        ? {
+                              id: response.id,
+                              role: 'CLIENT',
+                              signerName: form.name.trim(),
+                              signerTitle: null,
+                              document: `***.${form.document.replace(/\D/g, '').slice(3, 6)}.${form.document.replace(/\D/g, '').slice(6, 9)}-**`,
+                              method: signature.method,
+                              image: signature.method === 'DRAWN' ? signature.image : null,
+                              typedText: signature.method === 'TYPED' ? signature.typedText : null,
+                              contentHash: response.contentHash,
+                              signedAt: response.createdAt,
+                              emailVerifiedAt: response.createdAt,
+                              current: true,
+                          }
+                        : undefined,
             })
             if (mode === 'ACCEPTED') {
                 if (state) {
@@ -118,7 +188,7 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
     if (result) {
         const accepted = result.type === 'ACCEPTED'
         return (
-            <SectionShell id={block.id} title={blockTitle(block)} alt={alt} width="max-w-2xl">
+            <SectionShell id={block.id} title={blockTitle(block)} alt={alt} width="max-w-3xl">
                 <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="rounded-3xl p-8 text-center" style={card}>
                     <CheckCircle2 className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--pp-accent)' }} />
                     <h3 className="pp-heading text-2xl md:text-3xl mb-3" style={{ color: 'var(--pp-text)' }}>
@@ -138,6 +208,11 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                             {result.total != null && <p><span style={{ color: 'var(--pp-text)' }}>Total:</span> <strong style={{ color: 'var(--pp-accent)' }}>{formatCents(result.total)}</strong></p>}
                             <p><span style={{ color: 'var(--pp-text)' }}>Aceito por:</span> {result.name} em {new Date(result.at).toLocaleString('pt-BR')}</p>
                             <p className="text-xs pt-1 break-all">Código de verificação: {result.hash.slice(0, 16)}</p>
+                        </div>
+                    )}
+                    {accepted && (
+                        <div className="mb-6">
+                            <SignaturesPair signatures={{ provider: ctx.signatures?.provider ?? null, client: result.signature ?? null }} company={company} />
                         </div>
                     )}
                     {accepted && ctx.slug && (
@@ -168,6 +243,11 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                                   ? `Ela era válida até ${formatDate(state.expiresAt)}. Fale com a ${company} para receber uma versão atualizada.`
                                   : `Fale com a ${company} se precisar de algo.`}
                         </p>
+                        {state.state === 'ACCEPTED' && ctx.signatures && (
+                            <div className="mt-6 text-left">
+                                <SignaturesPair signatures={ctx.signatures} company={company} />
+                            </div>
+                        )}
                         {state.state !== 'ACCEPTED' && contact && (
                             <a href={contact} target="_blank" rel="noreferrer" className="inline-block mt-5 px-6 py-3 rounded-2xl pp-body text-sm font-semibold" style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent)' }}>
                                 Falar com a {company}
@@ -258,8 +338,14 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                                     value={form.email} onChange={(e) => set({ email: e.target.value })} disabled={ctx.preview} />
                             </div>
                             {mode === 'ACCEPTED' && (
-                                <input required={data.requireDocument} maxLength={30} placeholder={data.requireDocument ? 'CPF ou CNPJ' : 'CPF ou CNPJ (opcional)'} aria-label="CPF ou CNPJ"
-                                    className={fieldClass} style={fieldStyle} value={form.document} onChange={(e) => set({ document: e.target.value })} disabled={ctx.preview} />
+                                <>
+                                    <input required inputMode="numeric" maxLength={14} placeholder="CPF de quem assina" aria-label="CPF de quem assina"
+                                        className={fieldClass} style={fieldStyle} value={form.document} onChange={(e) => set({ document: maskCpf(e.target.value) })} disabled={ctx.preview} />
+                                    <div className="space-y-1.5">
+                                        <p className="pp-body text-xs uppercase tracking-widest" style={{ color: 'var(--pp-muted)' }}>Sua assinatura</p>
+                                        <SignaturePad value={signature} onChange={setSignature} suggestedName={form.name} disabled={ctx.preview} />
+                                    </div>
+                                </>
                             )}
                             <textarea
                                 required={mode === 'CHANGE_REQUESTED'}
@@ -283,6 +369,29 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                                     </span>
                                 </label>
                             )}
+                            {mode === 'ACCEPTED' && codeReady && (
+                                <div className="rounded-2xl p-4 space-y-2.5" style={{ border: '1px solid color-mix(in srgb, var(--pp-accent) 45%, transparent)', background: 'color-mix(in srgb, var(--pp-accent) 6%, transparent)' }}>
+                                    <p className="pp-body text-sm flex items-start gap-2" style={{ color: 'var(--pp-text)' }}>
+                                        <MailCheck className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--pp-accent)' }} />
+                                        <span>Enviamos um código de 6 dígitos para <strong>{codeSentTo}</strong>. Ele vale por 10 minutos.</span>
+                                    </p>
+                                    <input
+                                        autoFocus
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        maxLength={6}
+                                        placeholder="000000"
+                                        aria-label="Código de 6 dígitos"
+                                        className={`${fieldClass} text-center tracking-[0.5em] text-lg font-semibold`}
+                                        style={fieldStyle}
+                                        value={code}
+                                        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    />
+                                    <button type="button" disabled={cooldown > 0 || sending} onClick={sendCode} className="pp-body text-xs underline disabled:no-underline disabled:opacity-60" style={{ color: 'var(--pp-accent)' }}>
+                                        {cooldown > 0 ? `Reenviar código em ${cooldown}s` : 'Reenviar código'}
+                                    </button>
+                                </div>
+                            )}
                             {error && <p role="alert" className="pp-body text-sm" style={{ color: '#ef4444' }}>{error}</p>}
                             <button
                                 type="submit"
@@ -295,7 +404,9 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                                 {sending
                                     ? 'Enviando…'
                                     : mode === 'ACCEPTED'
-                                      ? pricing && !pricing.onRequest ? `Aceitar proposta · ${formatCents(pricing.totalCents)}` : 'Aceitar proposta'
+                                      ? !codeReady
+                                          ? 'Enviar código para assinar'
+                                          : pricing && !pricing.onRequest ? `Assinar e aceitar · ${formatCents(pricing.totalCents)}` : 'Assinar e aceitar'
                                       : mode === 'CHANGE_REQUESTED' ? 'Enviar pedido de ajuste' : 'Recusar proposta'}
                             </button>
                             {ctx.preview && (
@@ -303,7 +414,7 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                             )}
                             {mode === 'ACCEPTED' && !ctx.preview && (
                                 <p className="pp-body text-[11px] text-center" style={{ color: 'var(--pp-muted)' }}>
-                                    Registramos data, hora e o conteúdo desta proposta como comprovante do aceite.
+                                    Ao assinar, registramos seu CPF, o e-mail confirmado por código, data, hora e o conteúdo desta proposta como comprovante.
                                 </p>
                             )}
                         </motion.form>

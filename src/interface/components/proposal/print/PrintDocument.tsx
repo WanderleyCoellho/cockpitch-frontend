@@ -8,8 +8,10 @@ import {
 } from '../../../../shared/blocks'
 import { calculatePackagePricing, formatCents, formatQuantity, lineTotalCents, packagePriceText } from '../../../../shared/pricing'
 import { sanitizeHtml } from '../../../../shared/sanitizeHtml'
-import type { AcceptanceState, Package, PackageItem, ProposalResponse, Provider } from '../../../../shared/types'
+import type { AcceptanceState, Package, PackageItem, ProposalResponse, Provider, ProposalSignatures, ProposalSignatureView } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
+import { SignatureGlyph, formatSignedAt } from '../../signature/SignatureMark'
+import { maskCpf as formatCpf } from '../../../../shared/cpf'
 import { isDarkTheme } from '../public/theme'
 
 type Pkg = Package & { items?: PackageItem[] }
@@ -27,6 +29,8 @@ export type PrintContext = {
     acceptance?: AcceptanceState
     /** Aceite completo (e-mail, documento, IP), só quando a equipe da empresa imprime pelo painel. */
     acceptedEvidence?: ProposalResponse | null
+    /** Assinaturas da empresa e do cliente. */
+    signatures?: ProposalSignatures | null
     removeBranding: boolean
 }
 
@@ -35,7 +39,8 @@ const BORDER = (tk: ThemeTokens) => (isDarkTheme(tk) ? 'rgba(255,255,255,0.14)' 
 
 function formatDate(date: Date | string | null | undefined, withTime = false) {
     if (!date) return ''
-    return new Date(date).toLocaleString('pt-BR', withTime ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' })
+    // Sempre no horário de Brasília (o mesmo das assinaturas), qualquer que seja o fuso de quem imprime.
+    return new Date(date).toLocaleString('pt-BR', withTime ? { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Sao_Paulo' } : { dateStyle: 'long', timeZone: 'America/Sao_Paulo' })
 }
 
 function isVideo(url?: string, type?: string) {
@@ -321,6 +326,46 @@ function BlockPrint({ block, ctx }: { block: ProposalBlock; ctx: PrintContext })
     }
 }
 
+function SignatureBox({ signature, role, pending }: { signature: ProposalSignatureView | null; role: string; pending: string }) {
+    return (
+        <div className="pdf-sign">
+            <div className="pdf-sign-glyph">
+                {signature ? <SignatureGlyph signature={signature} height={58} /> : <span className="pdf-sign-pending">{pending}</span>}
+            </div>
+            <div className="pdf-sign-line" />
+            <p className="pdf-sign-name">{signature?.signerName ?? '—'}</p>
+            <p className="pdf-sign-role">
+                {role}
+                {signature?.signerTitle ? ` · ${signature.signerTitle}` : ''}
+            </p>
+            {signature && (
+                <p className="pdf-sign-meta">
+                    CPF {signature.document} · {formatSignedAt(signature.signedAt)}
+                    <br />
+                    E-mail confirmado por código · {signature.contentHash.slice(0, 12)}
+                </p>
+            )}
+        </div>
+    )
+}
+
+/** As duas assinaturas no fim da proposta (empresa assina ao publicar; cliente, no aceite). */
+function SignaturesSection({ ctx }: { ctx: PrintContext }) {
+    const provider = ctx.signatures?.provider?.current ? ctx.signatures.provider : null
+    const client = ctx.signatures?.client ?? null
+    // Proposta aceita: as duas assinaturas já saem no comprovante (última página).
+    if ((!provider && !client) || (ctx.acceptance?.state === 'ACCEPTED' && ctx.acceptance.accepted)) return null
+    return (
+        <section className="pdf-section pdf-keep">
+            <h2 className="pdf-h2">Assinaturas</h2>
+            <div className="pdf-sign-grid">
+                <SignatureBox signature={provider} role={`Pela ${ctx.placeholders.empresa}`} pending="Assinatura da empresa pendente" />
+                <SignatureBox signature={client} role={ctx.clientName} pending="Assinatura do cliente no aceite online" />
+            </div>
+        </section>
+    )
+}
+
 function AcceptanceCertificate({ ctx }: { ctx: PrintContext }) {
     const state = ctx.acceptance
     if (state?.state !== 'ACCEPTED' || !state.accepted) return null
@@ -331,7 +376,12 @@ function AcceptanceCertificate({ ctx }: { ctx: PrintContext }) {
         ...(evidence
             ? ([
                   ['E-mail', evidence.signerEmail],
-                  ...(evidence.signerDocument ? [['CPF/CNPJ', evidence.signerDocument] as [string, ReactNode]] : []),
+                  // Aceites assinados guardam CPF (só dígitos); os antigos podem ter CNPJ digitado à mão.
+                  ...(evidence.signerDocument
+                      ? [evidence.signerDocument.replace(/\D/g, '').length === 11 && /^\d+$/.test(evidence.signerDocument)
+                            ? (['CPF', formatCpf(evidence.signerDocument)] as [string, ReactNode])
+                            : (['CPF/CNPJ', evidence.signerDocument] as [string, ReactNode])]
+                      : []),
                   ['Endereço IP', evidence.ip ?? '—'],
                   ['Navegador', <span className="pdf-small">{evidence.userAgent ?? '—'}</span>],
               ] as Array<[string, ReactNode]>)
@@ -345,7 +395,7 @@ function AcceptanceCertificate({ ctx }: { ctx: PrintContext }) {
     ]
     return (
         <section className="pdf-certificate">
-            <h2 className="pdf-h2">Comprovante de aceite</h2>
+            <h2 className="pdf-h2">Comprovante de aceite e assinaturas</h2>
             <table className="pdf-cert-table">
                 <tbody>
                     {rows.map(([label, value]) => (
@@ -356,7 +406,12 @@ function AcceptanceCertificate({ ctx }: { ctx: PrintContext }) {
                     ))}
                 </tbody>
             </table>
+            <div className="pdf-sign-grid pdf-keep" style={{ marginBottom: '10pt' }}>
+                <SignatureBox signature={ctx.signatures?.provider?.current ? ctx.signatures.provider : null} role={`Pela ${ctx.placeholders.empresa}`} pending="Assinatura da empresa pendente" />
+                <SignatureBox signature={ctx.signatures?.client ?? null} role="Cliente" pending="—" />
+            </div>
             <p className="pdf-small pdf-muted">
+                Assinaturas eletrônicas com CPF, e-mail confirmado por código, data, hora e IP registrados (MP 2.200-2/2001, art. 10, § 2º).
                 O código de verificação é uma impressão digital (SHA-256) do conteúdo exato da proposta e da escolha feita no momento do aceite.
                 Qualquer alteração posterior na proposta gera um código diferente.
                 {!evidence && ' Os dados de contato e o endereço IP ficam registrados com a empresa.'}
@@ -444,6 +499,14 @@ export function PrintDocument({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: P
                 .pdf-cert-table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 9.5pt; }
                 .pdf-cert-table th { text-align: left; width: 42mm; color: ${MUTED(tk)}; font-weight: 500; padding: 5pt 8pt 5pt 0; border-bottom: 1px solid ${BORDER(tk)}; vertical-align: top; }
                 .pdf-cert-table td { padding: 5pt 0; border-bottom: 1px solid ${BORDER(tk)}; }
+                .pdf-sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+                .pdf-sign { background: #fbfaf7; color: #16181d; border: 1px solid rgba(0,0,0,.1); border-radius: 8pt; padding: 8pt 10pt 9pt; text-align: center; break-inside: avoid; }
+                .pdf-sign-glyph { height: 58px; display: flex; align-items: flex-end; justify-content: center; }
+                .pdf-sign-pending { font-size: 8pt; font-style: italic; color: rgba(0,0,0,.45); padding-bottom: 4pt; }
+                .pdf-sign-line { height: 1px; background: rgba(0,0,0,.3); margin: 2pt 8% 4pt; }
+                .pdf-sign-name { margin: 0; font-weight: 600; font-size: 9.5pt; }
+                .pdf-sign-role { margin: 1pt 0 0; font-size: 7pt; letter-spacing: .1em; text-transform: uppercase; color: rgba(0,0,0,.55); }
+                .pdf-sign-meta { margin: 3pt 0 0; font-size: 7pt; color: rgba(0,0,0,.6); line-height: 1.4; }
                 .pdf-branding { margin-top: 20pt; text-align: center; font-size: 8pt; color: ${MUTED(tk)}; }
                 @media screen {
                     .pdf-doc { max-width: 190mm; margin: 0 auto; padding: 16mm 15mm; background: ${tk.bg}; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
@@ -464,6 +527,8 @@ export function PrintDocument({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: P
             )}
 
             {blocks.map((block) => <BlockPrint key={block.id} block={block} ctx={ctx} />)}
+
+            <SignaturesSection ctx={ctx} />
 
             <AcceptanceCertificate ctx={ctx} />
 

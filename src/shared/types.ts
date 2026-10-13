@@ -138,6 +138,8 @@ export type Proposal = {
     acceptance?: AcceptanceState
     /** Página pública: false = mostra "Feito com Lumen Deal" (plano Grátis). */
     branding?: { removeBranding: boolean }
+    /** Assinaturas da empresa e do cliente (página pública). */
+    signatures?: ProposalSignatures
     /** Painel: total de respostas do cliente e a mais recente. */
     responsesCount?: number
     lastResponse?: { type: ProposalResponseType; signerName: string; createdAt: string } | null
@@ -311,4 +313,37 @@ export type BlockLibrary = {
     access: { blockLibrary: boolean; savedBlocks: boolean }
     system: BlockLibraryItem[]
     saved: SavedBlockItem[]
+}
+
+/** Assinatura desenhada (PNG) ou digitada (nome em fonte manuscrita). */
+export type SignatureDrawing = { method: 'DRAWN'; image: string } | { method: 'TYPED'; typedText: string }
+
+/** Assinatura como aparece na proposta e no comprovante (CPF mascarado na página pública). */
+export type ProposalSignatureView = {
+    id: string
+    role: 'PROVIDER' | 'CLIENT'
+    signerName: string
+    signerTitle: string | null
+    document: string
+    method: 'DRAWN' | 'TYPED'
+    image: string | null
+    typedText: string | null
+    contentHash: string
+    signedAt: string
+    emailVerifiedAt: string
+    /** Empresa: assinou a versão atual da proposta? */
+    current: boolean
+    /** Só no painel. */
+    signerEmail?: string
+    ip?: string | null
+    userAgent?: string | null
+}
+
+export type ProposalSignatures = { provider: ProposalSignatureView | null; client: ProposalSignatureView | null }
+
+export type SavedSignatureProfile = {
+    name: string
+    email: string
+    cpf: string | null
+    signature: (SignatureDrawing & { signerTitle?: string | null; image?: string | null; typedText?: string | null }) | null
 }

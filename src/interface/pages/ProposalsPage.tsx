@@ -12,7 +12,8 @@ import { printUrl } from '../components/proposal/print/printUrl'
 import StatusWorkflow from '../components/StatusWorkflow'
 import { usePlan } from '../context/PlanContext'
 import type { Proposal } from '../../shared/types'
-import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check, FileDown, FileText } from 'lucide-react'
+import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check, FileDown, FileSignature, FileText } from 'lucide-react'
+import { SignProposalDialog } from '../components/signature/SignProposalDialog'
 
 const STATUS_SURFACE: Record<NonNullable<Proposal['commercialStatus']>, string> = {
     sem_resposta: 'border-white/10 hover:border-white/20',
@@ -38,6 +39,7 @@ export default function ProposalsPage() {
     const [showForm, setShowForm] = useState(false)
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
     const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+    const [signing, setSigning] = useState<Proposal | null>(null)
 
     // Fetch provider do usuário
     const { data: provider } = useQuery({
@@ -152,6 +154,9 @@ export default function ProposalsPage() {
                 </div>
             </div>
 
+            {signing && (
+                <SignProposalDialog proposalId={signing.id} clientName={signing.clientName} onDone={() => setSigning(null)} onSkip={() => setSigning(null)} />
+            )}
             {showForm && (
                 <ProposalForm
                     proposal={selectedProposal}
@@ -240,6 +245,13 @@ export default function ProposalsPage() {
                                                         ? <><Check className="w-3.5 h-3.5" /> Copiado</>
                                                         : <><Link2 className="w-3.5 h-3.5" /> Copiar Link</>
                                                     }
+                                                </button>
+                                                <button
+                                                    onClick={() => setSigning(proposal)}
+                                                    title="Assinar a proposta em nome da empresa"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white/5 text-white/70 rounded-lg hover:bg-white/10 transition"
+                                                >
+                                                    <FileSignature className="w-3.5 h-3.5" /> Assinar
                                                 </button>
                                                 <button
                                                     onClick={() => handleEdit(proposal)}

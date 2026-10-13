@@ -11,6 +11,7 @@ import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
 import ContentEditor from './proposal/ContentEditor'
 import { BlocksEditor, type SaveTemplateState } from './proposal/editor/BlocksEditor'
 import { ResponsesPanel } from './proposal/ResponsesPanel'
+import { SignProposalDialog } from './signature/SignProposalDialog'
 import { TemplatePicker, blankTemplateBlocks } from './proposal/editor/TemplatePicker'
 import { getThemeTokens } from './proposal/ThemeSelector'
 import HelpTip from './help/HelpTip'
@@ -143,6 +144,19 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         }
     }
 
+    // Depois de salvar: se esta versão ainda não tem a assinatura da empresa, pede para assinar.
+    const [signTarget, setSignTarget] = useState<string | null>(null)
+    const afterSave = async (saved: { id: string }) => {
+        onSuccess?.()
+        try {
+            const signatures = await httpGateway.getProposalSignatures(saved.id)
+            if (signatures.provider?.current) return onClose()
+            setSignTarget(saved.id)
+        } catch {
+            onClose()
+        }
+    }
+
     const createMutation = useMutation({
         mutationFn: (data: ProposalFormData) =>
             httpGateway.createProposal({
@@ -157,10 +171,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 sectionsConfig,
                 ...(blocks ? { blocks, templateId } : {}),
             }),
-        onSuccess: () => {
-            onSuccess?.()
-            onClose()
-        },
+        onSuccess: afterSave,
         onError: applySlugSuggestion,
     })
 
@@ -176,10 +187,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
                 sectionsConfig,
                 ...(blocks ? { blocks } : {}),
             }),
-        onSuccess: () => {
-            onSuccess?.()
-            onClose()
-        },
+        onSuccess: afterSave,
         onError: applySlugSuggestion,
     })
 
@@ -324,6 +332,9 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
 
     return (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            {signTarget && (
+                <SignProposalDialog proposalId={signTarget} clientName={watch('clientName') || 'o cliente'} onDone={onClose} onSkip={onClose} />
+            )}
             <div className={`w-full ${tab === 'page' && step === 'form' ? 'max-w-7xl' : step === 'template' ? 'max-w-5xl' : 'max-w-4xl'} bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-[0_32px_96px_rgba(0,0,0,0.7)] max-h-[90vh] overflow-y-auto text-white`}>
                 {/* Header */}
                 <div className="sticky top-0 z-10 bg-[#0F0F0F]/95 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">

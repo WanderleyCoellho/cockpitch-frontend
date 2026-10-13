@@ -172,7 +172,7 @@ export const HELP: Record<string, HelpEntry> = {
         area: 'Propostas',
         article: 'aceite-online',
         title: 'Opções do aceite',
-        body: 'Pedir ajuste e recusar ajudam a entender o que travou a venda. Exigir CPF/CNPJ é útil quando o aceite vira contrato.',
+        body: 'Pedir ajuste e recusar ajudam a entender o que travou a venda. Para aceitar, o cliente sempre assina com CPF e um código enviado ao e-mail dele.',
     },
     'proposal.responses': {
         area: 'Propostas',

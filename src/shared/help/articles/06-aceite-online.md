@@ -6,7 +6,7 @@ A página da proposta precisa ter o bloco **Aceite online** (todos os modelos j�
 ## O que o cliente faz
 1. Escolhe o pacote e liga os opcionais que quiser; o total aparece na hora.
 2. Escolhe **Aceitar**, **Pedir ajuste** ou **Recusar**.
-3. No aceite, informa nome, e-mail (e CPF/CNPJ, se você exigir) e marca que concorda com as condições.
+3. No aceite, informa nome, e-mail e CPF, desenha ou digita a assinatura, marca que concorda com as condições e confirma com o código de 6 dígitos que chega no e-mail dele. Veja [Assinatura eletrônica](/ajuda/assinatura-eletronica).
 
 ## O que fica registrado
 Data e hora, IP, navegador, a escolha feita, o total calculado pelo servidor e um **código de verificação** (impressão digital do conteúdo exato da proposta). Veja tudo na aba **Respostas** da proposta.
