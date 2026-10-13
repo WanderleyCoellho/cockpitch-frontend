@@ -59,6 +59,7 @@ function AppRoutes() {
             {/* Rota pública para propostas */}
             <Route path="/p/:slug" element={<ProposalPublicPage />} />
             <Route path="/p/:slug/print" element={<ProposalPrintPage />} />
+            <Route path="/p/:slug/comprovante" element={<ProposalPrintPage receiptOnly />} />
             <Route path="/privacidade" element={<PrivacyPage />} />
             <Route path="/termos" element={<TermsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

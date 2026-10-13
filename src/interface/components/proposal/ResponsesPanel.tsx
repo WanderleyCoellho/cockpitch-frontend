@@ -1,9 +1,11 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { CheckCircle2, MessageSquareText, RotateCcw, ThumbsDown } from 'lucide-react'
+import { CheckCircle2, FileDown, MessageSquareText, RotateCcw, ThumbsDown } from 'lucide-react'
 import { httpGateway } from '../../../infra/gateway/HttpGateway'
 import { formatCents } from '../../../shared/pricing'
 import type { ProposalResponse, ProposalResponseType } from '../../../shared/types'
 import HelpTip from '../help/HelpTip'
+import { receiptNumber } from './print/AcceptanceReceipt'
+import { receiptUrl } from './print/printUrl'
 
 const TYPE_META: Record<ProposalResponseType, { label: string; Icon: typeof CheckCircle2; className: string }> = {
     ACCEPTED: { label: 'Aceitou', Icon: CheckCircle2, className: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25' },
@@ -17,7 +19,7 @@ export const RESPONSE_LABEL: Record<ProposalResponseType, string> = {
     DECLINED: 'Recusada',
 }
 
-function ResponseCard({ response }: { response: ProposalResponse }) {
+function ResponseCard({ response, slug, latestAccepted }: { response: ProposalResponse; slug?: string; latestAccepted: boolean }) {
     const meta = TYPE_META[response.type]
     const selection = response.selection
     return (
@@ -41,14 +43,19 @@ function ResponseCard({ response }: { response: ProposalResponse }) {
                 </p>
             )}
             <p className="text-[11px] text-white/30 break-all">
-                IP {response.ip ?? '—'} · comprovante {response.contentHash.slice(0, 16)}
+                IP {response.ip ?? '—'} · comprovante {receiptNumber(response.contentHash)}
             </p>
+            {latestAccepted && slug && (
+                <a href={receiptUrl(slug)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-[#C9A84C] hover:underline">
+                    <FileDown className="w-3.5 h-3.5" /> Baixar comprovante assinado
+                </a>
+            )}
         </li>
     )
 }
 
 /** Aba "Respostas" da proposta: histórico do aceite online e opção de reabrir. */
-export function ResponsesPanel({ proposalId, isClosed, onChanged }: { proposalId: string; isClosed: boolean; onChanged?: () => void }) {
+export function ResponsesPanel({ proposalId, slug, isClosed, onChanged }: { proposalId: string; slug?: string; isClosed: boolean; onChanged?: () => void }) {
     const { data: responses = [], isLoading, error, refetch } = useQuery({
         queryKey: ['proposal-responses', proposalId],
         queryFn: () => httpGateway.listProposalResponses(proposalId),
@@ -61,6 +68,9 @@ export function ResponsesPanel({ proposalId, isClosed, onChanged }: { proposalId
         },
     })
     const closed = isClosed && !reopen.isSuccess
+
+    // O comprovante vale para o aceite atual (o último, enquanto a proposta segue fechada).
+    const lastAcceptedId = [...responses].reverse().find((r) => r.type === 'ACCEPTED')?.id
 
     return (
         <div className="space-y-5">
@@ -98,7 +108,9 @@ export function ResponsesPanel({ proposalId, isClosed, onChanged }: { proposalId
                 </div>
             )}
             <ul className="space-y-3">
-                {responses.map((response) => <ResponseCard key={response.id} response={response} />)}
+                {responses.map((response) => (
+                    <ResponseCard key={response.id} response={response} slug={slug} latestAccepted={isClosed && response.id === lastAcceptedId} />
+                ))}
             </ul>
         </div>
     )

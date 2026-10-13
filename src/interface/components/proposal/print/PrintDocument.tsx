@@ -11,7 +11,7 @@ import { sanitizeHtml } from '../../../../shared/sanitizeHtml'
 import type { AcceptanceState, Package, PackageItem, ProposalResponse, Provider, ProposalSignatures, ProposalSignatureView } from '../../../../shared/types'
 import type { ThemeTokens } from '../ThemeSelector'
 import { SignatureGlyph, formatSignedAt } from '../../signature/SignatureMark'
-import { maskCpf as formatCpf } from '../../../../shared/cpf'
+import { AcceptanceReceipt } from './AcceptanceReceipt'
 import { isDarkTheme } from '../public/theme'
 
 type Pkg = Package & { items?: PackageItem[] }
@@ -366,62 +366,13 @@ function SignaturesSection({ ctx }: { ctx: PrintContext }) {
     )
 }
 
-function AcceptanceCertificate({ ctx }: { ctx: PrintContext }) {
-    const state = ctx.acceptance
-    if (state?.state !== 'ACCEPTED' || !state.accepted) return null
-    const evidence = ctx.acceptedEvidence
-    const rows: Array<[string, ReactNode]> = [
-        ['Proposta', `${ctx.placeholders.empresa} — para ${ctx.clientName}`],
-        ['Aceita por', evidence?.signerName ?? state.acceptedBy ?? ''],
-        ...(evidence
-            ? ([
-                  ['E-mail', evidence.signerEmail],
-                  // Aceites assinados guardam CPF (só dígitos); os antigos podem ter CNPJ digitado à mão.
-                  ...(evidence.signerDocument
-                      ? [evidence.signerDocument.replace(/\D/g, '').length === 11 && /^\d+$/.test(evidence.signerDocument)
-                            ? (['CPF', formatCpf(evidence.signerDocument)] as [string, ReactNode])
-                            : (['CPF/CNPJ', evidence.signerDocument] as [string, ReactNode])]
-                      : []),
-                  ['Endereço IP', evidence.ip ?? '—'],
-                  ['Navegador', <span className="pdf-small">{evidence.userAgent ?? '—'}</span>],
-              ] as Array<[string, ReactNode]>)
-            : []),
-        ['Data e hora', formatDate(state.acceptedAt, true)],
-        ['Pacote', state.accepted.packageName ?? '—'],
-        ...(state.accepted.optionals.length ? [['Opcionais', state.accepted.optionals.join(', ')] as [string, ReactNode]] : []),
-        ['Total', state.accepted.totalCents != null ? formatCents(state.accepted.totalCents) : 'Sob consulta'],
-        ['Código de verificação', <span className="pdf-mono">{state.accepted.contentHash}</span>],
-        ['Proposta online', <a href={ctx.proposalUrl}>{ctx.proposalUrl}</a>],
-    ]
-    return (
-        <section className="pdf-certificate">
-            <h2 className="pdf-h2">Comprovante de aceite e assinaturas</h2>
-            <table className="pdf-cert-table">
-                <tbody>
-                    {rows.map(([label, value]) => (
-                        <tr key={label}>
-                            <th>{label}</th>
-                            <td>{value}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            <div className="pdf-sign-grid pdf-keep" style={{ marginBottom: '10pt' }}>
-                <SignatureBox signature={ctx.signatures?.provider?.current ? ctx.signatures.provider : null} role={`Pela ${ctx.placeholders.empresa}`} pending="Assinatura da empresa pendente" />
-                <SignatureBox signature={ctx.signatures?.client ?? null} role="Cliente" pending="—" />
-            </div>
-            <p className="pdf-small pdf-muted">
-                Assinaturas eletrônicas com CPF, e-mail confirmado por código, data, hora e IP registrados (MP 2.200-2/2001, art. 10, § 2º).
-                O código de verificação é uma impressão digital (SHA-256) do conteúdo exato da proposta e da escolha feita no momento do aceite.
-                Qualquer alteração posterior na proposta gera um código diferente.
-                {!evidence && ' Os dados de contato e o endereço IP ficam registrados com a empresa.'}
-            </p>
-        </section>
-    )
-}
-
 /** Proposta em formato de documento A4 (impressão / "Salvar como PDF"), sem elementos interativos. */
-export function PrintDocument({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: PrintContext }) {
+export function PrintDocument({ blocks, ctx, receiptOnly = false }: { blocks: ProposalBlock[]; ctx: PrintContext; receiptOnly?: boolean }) {
+    const termsBlock = blocks.find((b) => b.type === 'terms')
+    const terms = termsBlock?.type === 'terms' ? fillPlaceholdersHtml(termsBlock.data.body, ctx.placeholders) : null
+    // Só o comprovante (/p/:slug/comprovante): página única, sem a proposta.
+    if (receiptOnly) return <AcceptanceReceipt ctx={ctx} terms={terms} />
+
     const { tk } = ctx
     const footerLeft = `${ctx.placeholders.empresa} · Proposta para ${ctx.clientName}${ctx.validUntil ? ` · válida até ${formatDate(ctx.validUntil)}` : ''}`
     const footerRight = ctx.removeBranding ? '' : 'Feito com Lumen Deal · '
@@ -429,6 +380,7 @@ export function PrintDocument({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: P
     const hasCover = blocks.some((b) => b.type === 'cover')
 
     return (
+        <>
         <div className="pdf-doc">
             <style>{`
                 @page {
@@ -530,9 +482,10 @@ export function PrintDocument({ blocks, ctx }: { blocks: ProposalBlock[]; ctx: P
 
             <SignaturesSection ctx={ctx} />
 
-            <AcceptanceCertificate ctx={ctx} />
-
             {!ctx.removeBranding && <p className="pdf-branding">Proposta feita com Lumen Deal · deal.lumendevstudios.com</p>}
         </div>
+        {/* Comprovante na última página, com layout próprio (cores da plataforma). */}
+        <AcceptanceReceipt ctx={ctx} terms={terms} />
+        </>
     )
 }

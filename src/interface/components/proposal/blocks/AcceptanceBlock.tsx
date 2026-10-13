@@ -9,7 +9,7 @@ import { isValidCpf, maskCpf } from '../../../../shared/cpf'
 import { SignaturePad } from '../../signature/SignaturePad'
 import { SignatureMark } from '../../signature/SignatureMark'
 import { useProposalSelection } from './selection'
-import { printUrl } from '../print/printUrl'
+import { printUrl, receiptUrl } from '../print/printUrl'
 import { Reveal, SectionShell, whatsappHref, type BlockContext } from './shared'
 
 type Pkg = Package & { items?: PackageItem[] }
@@ -59,6 +59,21 @@ export function SignaturesPair({ signatures, company }: { signatures?: ProposalS
 }
 
 const RESEND_SECONDS = 60
+
+/** Comprovante (uma página) e PDF completo da proposta aceita. */
+function ReceiptLinks({ slug }: { slug: string }) {
+    const style = { border: '1px solid var(--pp-border)', color: 'var(--pp-text)' }
+    return (
+        <div className="pp-no-print flex flex-wrap justify-center gap-2">
+            <a href={receiptUrl(slug)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl pp-body text-sm font-semibold" style={{ background: 'var(--pp-accent)', color: 'var(--pp-on-accent)' }}>
+                <BadgeCheck className="w-4 h-4" /> Baixar comprovante
+            </a>
+            <a href={printUrl(slug)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl pp-body text-sm" style={style}>
+                <Printer className="w-4 h-4" /> PDF da proposta
+            </a>
+        </div>
+    )
+}
 
 export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBlock; ctx: BlockContext; alt: boolean }) {
     const selection = useProposalSelection()
@@ -215,11 +230,7 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                             <SignaturesPair signatures={{ provider: ctx.signatures?.provider ?? null, client: result.signature ?? null }} company={company} />
                         </div>
                     )}
-                    {accepted && ctx.slug && (
-                        <a href={printUrl(ctx.slug)} target="_blank" rel="noreferrer" className="pp-no-print inline-flex items-center gap-2 px-5 py-2.5 rounded-xl pp-body text-sm" style={{ border: '1px solid var(--pp-border)', color: 'var(--pp-text)' }}>
-                            <Printer className="w-4 h-4" /> Baixar PDF com o comprovante
-                        </a>
-                    )}
+                    {accepted && ctx.slug && <ReceiptLinks slug={ctx.slug} />}
                 </motion.div>
             </SectionShell>
         )
@@ -246,6 +257,11 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                         {state.state === 'ACCEPTED' && ctx.signatures && (
                             <div className="mt-6 text-left">
                                 <SignaturesPair signatures={ctx.signatures} company={company} />
+                            </div>
+                        )}
+                        {state.state === 'ACCEPTED' && ctx.slug && (
+                            <div className="mt-5">
+                                <ReceiptLinks slug={ctx.slug} />
                             </div>
                         )}
                         {state.state !== 'ACCEPTED' && contact && (

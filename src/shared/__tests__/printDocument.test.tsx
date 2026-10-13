@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { BLOCK_TYPES, createBlock, type ProposalBlock } from '../blocks'
 import { PrintDocument, type PrintContext } from '../../interface/components/proposal/print/PrintDocument'
 import { THEMES } from '../../interface/components/proposal/ThemeSelector'
-import { printUrl } from '../../interface/components/proposal/print/printUrl'
+import { printUrl, receiptUrl } from '../../interface/components/proposal/print/printUrl'
+import { receiptNumber } from '../../interface/components/proposal/print/AcceptanceReceipt'
 import type { Package } from '../types'
 
 const pkg = {
@@ -60,8 +61,11 @@ describe('PDF da proposta', () => {
             accepted: { packageId: 'p1', optionalIds: ['i2'], packageName: 'Completo', optionals: ['Workshop'], totalCents: 150000, contentHash: 'a'.repeat(64) },
         }
         const pub = renderToStaticMarkup(<PrintDocument blocks={allBlocks()} ctx={{ ...baseCtx, acceptance }} />)
-        expect(pub).toContain('Comprovante de aceite')
+        expect(pub).toContain('COMPROVANTE')
+        expect(pub).toContain(receiptNumber('a'.repeat(64)))
         expect(pub).toContain('Roberto Lima')
+        // Sem assinatura da empresa: a linha aparece como pendente.
+        expect(pub).toContain('Assinatura da empresa pendente')
         expect(pub).toContain('a'.repeat(64))
         expect(pub).not.toContain('Endereço IP')
 
@@ -71,6 +75,27 @@ describe('PDF da proposta', () => {
         expect(panel).toContain('200.1.2.3')
         expect(panel).toContain('12.345.678/0001-90')
         expect(panel).not.toContain('Feito com Lumen Deal')
+    })
+
+    it('comprovante sozinho: uma página com as duas assinaturas; sem aceite, não mostra nada', () => {
+        const acceptance = {
+            enabled: true, state: 'ACCEPTED' as const, expiresAt: '2026-12-01T00:00:00Z', acceptedAt: '2026-10-07T15:00:00Z', acceptedBy: 'Roberto Lima',
+            accepted: { packageId: 'p1', optionalIds: [], packageName: 'Completo', optionals: [], totalCents: 150000, contentHash: 'b'.repeat(64) },
+        }
+        const signature = (role: 'PROVIDER' | 'CLIENT', signerName: string) => ({
+            id: role, role, signerName, signerTitle: null, document: '***.982.247-**', method: 'TYPED' as const, image: null, typedText: signerName,
+            contentHash: 'b'.repeat(64), signedAt: '2026-10-07T15:00:00Z', emailVerifiedAt: '2026-10-07T15:00:00Z', current: true,
+        })
+        const html = renderToStaticMarkup(
+            <PrintDocument receiptOnly blocks={allBlocks()} ctx={{ ...baseCtx, acceptance, signatures: { provider: signature('PROVIDER', 'Ana Ribeiro'), client: signature('CLIENT', 'Roberto Lima') } }} />
+        )
+        expect(html).toContain('rc-page')
+        expect(html).not.toContain('pdf-doc')
+        expect(html).toContain('Ana Ribeiro')
+        expect(html).toContain('E-mail confirmado por código')
+        expect(html).toContain('R$')
+        expect(renderToStaticMarkup(<PrintDocument receiptOnly blocks={allBlocks()} ctx={baseCtx} />)).toBe('')
+        expect(receiptUrl('meu slug')).toBe('/p/meu%20slug/comprovante?auto=1')
     })
 
     it('monta o link do PDF com a escolha do cliente', () => {

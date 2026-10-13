@@ -420,7 +420,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
 
                     {/* ── TAB: RESPOSTAS ── */}
                     {tab === 'responses' && proposal && (
-                        <ResponsesPanel proposalId={proposal.id} isClosed={isClosed} onChanged={onSuccess} />
+                        <ResponsesPanel proposalId={proposal.id} slug={proposal.slug} isClosed={isClosed} onChanged={onSuccess} />
                     )}
 
                     {/* ── TAB: PÁGINA (blocos) ── */}

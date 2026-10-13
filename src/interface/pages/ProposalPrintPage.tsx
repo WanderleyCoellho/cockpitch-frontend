@@ -24,7 +24,7 @@ async function waitForMedia(root: HTMLElement) {
     await Promise.race([Promise.all([...loads, fonts]), new Promise((resolve) => setTimeout(resolve, MEDIA_TIMEOUT_MS))])
 }
 
-export default function ProposalPrintPage() {
+export default function ProposalPrintPage({ receiptOnly = false }: { receiptOnly?: boolean }) {
     const { slug = '' } = useParams()
     const [params] = useSearchParams()
     const { isAuthenticated } = useAuth()
@@ -88,7 +88,7 @@ export default function ProposalPrintPage() {
 
     useEffect(() => {
         if (!proposal) return
-        document.title = `Proposta - ${proposal.clientName} - ${empresa}`
+        document.title = `${receiptOnly ? 'Comprovante' : 'Proposta'} - ${proposal.clientName} - ${empresa}`
     }, [proposal, empresa])
 
     useEffect(() => {
@@ -99,6 +99,7 @@ export default function ProposalPrintPage() {
 
     if (isLoading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white/50 text-sm">Preparando o PDF…</div>
     if (error || !proposal) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white/50 text-sm">Proposta não encontrada.</div>
+    if (receiptOnly && !accepted) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white/50 text-sm px-6 text-center">O comprovante fica disponível depois que o cliente aceita e assina a proposta.</div>
 
     const tk = getThemeTokens(proposal.theme, proposal.themeCustom)
     const expires = proposal.acceptance?.expiresAt ? new Date(proposal.acceptance.expiresAt) : null
@@ -119,6 +120,7 @@ export default function ProposalPrintPage() {
             </div>
             <div ref={docRef} className="py-8 print:py-0">
                 <PrintDocument
+                    receiptOnly={receiptOnly}
                     blocks={blocks}
                     ctx={{
                         tk,
