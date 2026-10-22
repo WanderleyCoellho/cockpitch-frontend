@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { loadStripe } from '@stripe/stripe-js'
 import { X, AlertTriangle, Loader2, Check } from 'lucide-react'
 import { PLANS, PUBLIC_PLAN_IDS, type PlanId } from '../../shared/plans'
 import { usePlan } from '../context/PlanContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 
-// Substituir pela chave pública do Stripe em produção
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY ?? '')
-
 export default function PlanSelector({ onClose }: { onClose: () => void }) {
-    const { currentPlan, setPlan } = usePlan()
+    const { currentPlan, canManageBilling, hasSubscription } = usePlan()
     const [loading, setLoading] = useState<PlanId | null>(null)
     const [checkoutError, setCheckoutError] = useState<string | null>(null)
     const isCourtesy = currentPlan.id === 'courtesy'
@@ -17,42 +13,35 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
     const handleSelectPlan = async (planId: PlanId) => {
         const plan = PLANS[planId]
 
-        if (planId === 'free') {
-            setPlan('free')
-            onClose()
-            return
-        }
-
-        if (!plan.stripePriceId || plan.stripePriceId.includes('placeholder')) {
-            // Modo dev: simula upgrade sem Stripe
-            setPlan(planId)
-            onClose()
-            return
-        }
-
-        setLoading(planId)
         setCheckoutError(null)
         try {
-            const stripe = await stripePromise
-            if (!stripe) throw new Error('Stripe não inicializado')
-
-            const { sessionId } = await httpGateway.createStripeCheckout(plan.stripePriceId)
-            const result = await stripe.redirectToCheckout({ sessionId })
-            if (result.error) {
-                throw new Error(result.error.message)
+            // Voltar para o Grátis = cancelar a assinatura no portal do Stripe (vale até o fim do período pago).
+            if (!plan.checkoutTier) {
+                if (!hasSubscription) {
+                    onClose()
+                    return
+                }
+                setLoading(planId)
+                const { url } = await httpGateway.openBillingPortal()
+                window.location.assign(url)
+                return
             }
+
+            setLoading(planId)
+            const { url } = await httpGateway.createStripeCheckout(plan.checkoutTier)
+            if (!url) throw new Error('Não foi possível abrir o checkout. Tente novamente.')
+            window.location.assign(url)
         } catch (err) {
             console.error('Stripe error:', err)
             const message = err instanceof Error ? err.message : null
             setCheckoutError(message || 'Erro ao iniciar checkout. Tente novamente.')
-        } finally {
             setLoading(null)
         }
     }
 
     return (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-5xl bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.55)] max-h-[90vh] overflow-y-auto text-white">
+            <div className="w-full max-w-6xl bg-[#0F0F0F] border border-white/10 rounded-2xl shadow-[0_20px_80px_rgba(0,0,0,0.55)] max-h-[90vh] overflow-y-auto text-white">
                 {/* Header */}
                 <div className="sticky top-0 bg-[#0F0F0F]/95 backdrop-blur-sm border-b border-white/10 p-6 flex items-center justify-between">
                     <div>
@@ -76,6 +65,12 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                         </div>
                     )}
 
+                    {!canManageBilling && (
+                        <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                            Só o dono da empresa pode assinar ou trocar de plano. Peça a ele para fazer o upgrade.
+                        </div>
+                    )}
+
                     {checkoutError && (
                         <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
                             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -83,7 +78,7 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                         {PUBLIC_PLAN_IDS.map((planId) => {
                             const plan = PLANS[planId]
                             const isCurrentPlan = plan.id === currentPlan.id || (isCourtesy && plan.id === 'pro')
@@ -136,7 +131,7 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
 
                                     <button
                                         onClick={() => handleSelectPlan(plan.id)}
-                                        disabled={isCurrentPlan || isLoading}
+                                        disabled={isCurrentPlan || isLoading || !canManageBilling}
                                         className={`w-full py-2.5 rounded-full font-semibold text-sm transition ${isCurrentPlan
                                             ? 'bg-white/10 text-white/50 cursor-not-allowed'
                                             : plan.highlighted
@@ -151,12 +146,16 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                                                     ? 'Incluso na Cortesia'
                                                     : 'Plano Atual'
                                                 : plan.price === 0
-                                                    ? 'Usar Gratuitamente'
-                                                    : 'Assinar Agora'}
+                                                    ? hasSubscription
+                                                        ? 'Cancelar assinatura'
+                                                        : 'Usar Gratuitamente'
+                                                    : hasSubscription
+                                                        ? 'Trocar para este plano'
+                                                        : 'Assinar Agora'}
                                     </button>
                                     {isLoading && (
                                         <div className="flex items-center justify-center gap-2 text-xs text-white/40 -mt-1">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Redirecionando para checkout
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Abrindo o pagamento seguro do Stripe
                                         </div>
                                     )}
                                 </div>
@@ -165,7 +164,7 @@ export default function PlanSelector({ onClose }: { onClose: () => void }) {
                     </div>
 
                     <p className="text-xs text-white/40 text-center mt-6">
-                        Cancele a qualquer momento. Sem taxa de cancelamento.
+                        Pagamento seguro pelo Stripe. Troque de plano ou cancele quando quiser; o cancelamento vale no fim do período já pago.
                     </p>
                 </div>
             </div>

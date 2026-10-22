@@ -1,5 +1,5 @@
 /**
- * Tipos base do projeto Cockpitch
+ * Tipos base do projeto Lumen Deal
  */
 
 export type ProposalMediaItem = {
@@ -7,11 +7,18 @@ export type ProposalMediaItem = {
     type: 'image' | 'video'
 }
 
+export type PackageItemKind = 'INCLUDED' | 'OPTIONAL' | 'COURTESY'
+
 export type PackageItem = {
     id: string
     packageId: string
     name: string
+    description?: string | null
     isCourtesy: boolean
+    kind: PackageItemKind
+    quantity: number
+    unit?: string | null
+    unitPriceCents: number
     order: number
 }
 
@@ -81,7 +88,15 @@ export type Package = {
     providerId: string
     name: string
     description?: string
+    /** Legado: total calculado em texto ("3500.00") ou o rótulo quando é sob consulta. */
     price: string
+    priceMode: 'SUM_OF_ITEMS' | 'FIXED' | 'ON_REQUEST'
+    fixedPriceCents?: number | null
+    discountType: 'NONE' | 'PERCENT' | 'AMOUNT'
+    discountValue: number
+    priceLabel?: string | null
+    pricing?: import('./pricing').PackagePricing
+    items?: PackageItem[]
     isHighlighted: boolean
     highlightLabel?: string
     highlightColor?: string
@@ -100,6 +115,9 @@ export type Proposal = {
     providerId: string
     clientName: string
     slug: string
+    /** Link copiado pelo painel: conta como "enviada" no Analytics. */
+    sharedAt?: string | null
+    views?: Array<{ id: string }>
     serviceDate?: string
     validityDays: number
     status: 'aberta' | 'fechada' | 'expirada' | 'arquivada'
@@ -113,9 +131,147 @@ export type Proposal = {
     theme?: string
     themeCustom?: ThemeCustom | null
     sections?: ProposalSection[] | null
+    sectionsConfig?: Record<string, any> | null
+    videoSoundEnabled?: boolean
     packages?: Array<Package & { items?: PackageItem[] }>
+    /** Estado do aceite online (só na página pública). */
+    acceptance?: AcceptanceState
+    /** Página pública: false = mostra "Feito com Lumen Deal" (plano Grátis). */
+    branding?: { removeBranding: boolean }
+    /** Assinaturas da empresa e do cliente (página pública). */
+    signatures?: ProposalSignatures
+    /** Painel: total de respostas do cliente e a mais recente. */
+    responsesCount?: number
+    lastResponse?: { type: ProposalResponseType; signerName: string; createdAt: string } | null
+    /** Proposta em blocos; null = layout legado. */
+    blocks?: import('./blocks').ProposalBlock[] | null
+    templateId?: string | null
     createdAt: string
     updatedAt: string
+}
+
+export type OnboardingStepKey = 'profile' | 'package' | 'proposal' | 'shared' | 'viewed'
+
+export type OnboardingStatus = {
+    steps: Array<{ key: OnboardingStepKey; done: boolean }>
+    completed: number
+    total: number
+    dismissed: boolean
+    toursSeen: string[]
+    toursDisabled: boolean
+}
+
+export type ProposalResponseType = 'ACCEPTED' | 'DECLINED' | 'CHANGE_REQUESTED'
+
+export type AcceptanceState = {
+    enabled: boolean
+    state: 'OPEN' | 'ACCEPTED' | 'EXPIRED' | 'CLOSED'
+    expiresAt: string
+    acceptedAt?: string
+    acceptedBy?: string
+    /** O que foi aceito (sem dados pessoais além do nome). */
+    accepted?: {
+        packageId: string | null
+        optionalIds: string[]
+        packageName: string | null
+        optionals: string[]
+        totalCents: number | null
+        contentHash: string
+    }
+}
+
+export type ResponseSelection = {
+    packageId: string
+    packageName: string
+    optionals: Array<{ id: string; name: string; cents: number }>
+    pricing: { onRequest: boolean; baseCents: number; optionalsCents: number; discountCents: number; totalCents: number }
+}
+
+export type ProposalResponse = {
+    id: string
+    type: ProposalResponseType
+    signerName: string
+    signerEmail: string
+    signerDocument?: string | null
+    message?: string | null
+    selection?: ResponseSelection | null
+    totalCents?: number | null
+    contentHash: string
+    ip?: string | null
+    userAgent?: string | null
+    createdAt: string
+}
+
+export type ProposalTemplate = {
+    id: string
+    /** true = modelo pronto do Lumen Deal (ids sys-*); false = modelo salvo pela empresa. */
+    system: boolean
+    name: string
+    description?: string | null
+    segment: string
+    theme?: string | null
+    themeCustom?: ThemeCustom | null
+    blocks: import('./blocks').ProposalBlock[]
+    createdAt?: string
+}
+
+export type WorkspaceRole = 'OWNER' | 'ADMIN' | 'MEMBER'
+export type PlanTier = 'FREE' | 'STARTER' | 'PRO' | 'AGENCY'
+
+export type Entitlements = {
+    tier: PlanTier
+    effectiveTier: PlanTier
+    isCourtesy: boolean
+    proposalsPerMonth: number
+    members: number
+    storageGb: number
+    removeBranding: boolean
+    /** Escolher o link público da proposta (Profissional/Equipe). */
+    customSlug?: boolean
+    customTemplates: boolean
+    /** Biblioteca de blocos prontos no editor (Essencial+). */
+    blockLibrary?: boolean
+    /** Salvar blocos próprios para a equipe (Profissional+). */
+    savedBlocks?: boolean
+    emailNotifications: boolean
+    analytics: boolean
+}
+
+export type WorkspaceSummary = {
+    id: string
+    name: string
+    slug: string
+    segment: string
+    logoUrl?: string | null
+    brandColor?: string | null
+    role: WorkspaceRole
+    planTier: PlanTier
+    billingStatus: 'INACTIVE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    licensePolicy: 'STANDARD' | 'COURTESY'
+    licensePolicyNote?: string | null
+    providerId: string | null
+    entitlements: Entitlements
+}
+
+export type WorkspaceDetails = WorkspaceSummary & {
+    locale: string
+    currency: string
+    usage: { proposalsThisMonth: number; members: number; pendingInvites: number }
+}
+
+export type WorkspaceMemberItem = {
+    id: string
+    role: WorkspaceRole
+    createdAt: string
+    user: { id: string; name: string; email: string }
+}
+
+export type WorkspaceInviteItem = {
+    id: string
+    email: string
+    role: WorkspaceRole
+    expiresAt: string
+    createdAt: string
 }
 
 export type AuthUser = {
@@ -128,4 +284,66 @@ export type AuthUser = {
     billingStatus?: 'INACTIVE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
     licensePolicy?: 'STANDARD' | 'COURTESY'
     licensePolicyNote?: string | null
+    activeWorkspaceId?: string | null
+    workspaces?: WorkspaceSummary[]
+}
+
+/** Bloco pronto da biblioteca do sistema (vem de um modelo). Sem o plano, chega sem `block`. */
+export type BlockLibraryItem = {
+    id: string
+    type: import('./blocks').BlockType
+    title: string
+    templateId: string
+    templateName: string
+    theme: string
+    segment: string
+    block?: import('./blocks').ProposalBlock
+}
+
+export type SavedBlockItem = {
+    id: string
+    name: string
+    type: import('./blocks').BlockType
+    block: import('./blocks').ProposalBlock
+    createdById: string | null
+    createdAt: string
+}
+
+export type BlockLibrary = {
+    access: { blockLibrary: boolean; savedBlocks: boolean }
+    system: BlockLibraryItem[]
+    saved: SavedBlockItem[]
+}
+
+/** Assinatura desenhada (PNG) ou digitada (nome em fonte manuscrita). */
+export type SignatureDrawing = { method: 'DRAWN'; image: string } | { method: 'TYPED'; typedText: string }
+
+/** Assinatura como aparece na proposta e no comprovante (CPF mascarado na página pública). */
+export type ProposalSignatureView = {
+    id: string
+    role: 'PROVIDER' | 'CLIENT'
+    signerName: string
+    signerTitle: string | null
+    document: string
+    method: 'DRAWN' | 'TYPED'
+    image: string | null
+    typedText: string | null
+    contentHash: string
+    signedAt: string
+    emailVerifiedAt: string
+    /** Empresa: assinou a versão atual da proposta? */
+    current: boolean
+    /** Só no painel. */
+    signerEmail?: string
+    ip?: string | null
+    userAgent?: string | null
+}
+
+export type ProposalSignatures = { provider: ProposalSignatureView | null; client: ProposalSignatureView | null }
+
+export type SavedSignatureProfile = {
+    name: string
+    email: string
+    cpf: string | null
+    signature: (SignatureDrawing & { signerTitle?: string | null; image?: string | null; typedText?: string | null }) | null
 }

@@ -1,12 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import GuidedTour, { type TourStep } from '../components/help/GuidedTour'
+import EmptyState from '../components/help/EmptyState'
+import { useOnboarding } from '../hooks/useOnboarding'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import ProposalForm from '../components/ProposalForm'
+import { RESPONSE_LABEL } from '../components/proposal/ResponsesPanel'
+import { printUrl } from '../components/proposal/print/printUrl'
 import StatusWorkflow from '../components/StatusWorkflow'
 import { usePlan } from '../context/PlanContext'
 import type { Proposal } from '../../shared/types'
-import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check } from 'lucide-react'
+import { Link2, Pencil, PlusCircle, Clock3, ExternalLink, Check, FileDown, FileSignature, FileText } from 'lucide-react'
+import { SignProposalDialog } from '../components/signature/SignProposalDialog'
 
 const STATUS_SURFACE: Record<NonNullable<Proposal['commercialStatus']>, string> = {
     sem_resposta: 'border-white/10 hover:border-white/20',
@@ -16,13 +23,23 @@ const STATUS_SURFACE: Record<NonNullable<Proposal['commercialStatus']>, string> 
     personalizado: 'border-[#C9A84C]/20 hover:border-[#C9A84C]/35',
 }
 
+const TOUR: TourStep[] = [
+    { target: 'new-proposal', title: 'Nova proposta', body: 'Comece por aqui. Você escolhe um modelo do seu segmento e ajusta os blocos com pré-visualização ao vivo.' },
+    { target: 'proposal-actions', title: 'Enviar e acompanhar', body: 'Abra para conferir, copie o link para mandar ao cliente, baixe o PDF ou edite. Cada proposta tem a aba Respostas com os aceites.' },
+    { target: 'proposal-status', title: 'Status comercial', body: 'Atualiza sozinho quando o cliente aceita, pede ajuste ou recusa pela página. Você também pode mudar à mão.' },
+    { target: 'help-button', title: 'Precisa de ajuda?', body: 'Aqui você revê este tour e abre a central de ajuda com o passo a passo de cada tarefa.' },
+]
+
 export default function ProposalsPage() {
-    const { user } = useAuth()
+    const { user, activeWorkspace } = useAuth()
+    const { update: updateOnboarding } = useOnboarding()
+    const [searchParams, setSearchParams] = useSearchParams()
     const queryClient = useQueryClient()
-    const { currentPlan, canCreateProposal } = usePlan()
+    const { currentPlan, canCreateProposal, refreshUsage } = usePlan()
     const [showForm, setShowForm] = useState(false)
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
     const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+    const [signing, setSigning] = useState<Proposal | null>(null)
 
     // Fetch provider do usuário
     const { data: provider } = useQuery({
@@ -30,7 +47,7 @@ export default function ProposalsPage() {
         queryFn: async () => {
             const providers = await httpGateway.listProviders()
             if (!providers?.length) return null
-            return providers.find((p: any) => p.id === user?.providerId) ?? providers[0]
+            return providers.find((p: any) => p.id === (activeWorkspace?.providerId ?? user?.providerId)) ?? providers[0]
         },
     })
 
@@ -46,6 +63,13 @@ export default function ProposalsPage() {
         setShowForm(true)
     }
 
+    // Atalho do checklist do Dashboard: /proposals?nova=1 abre a criação direto.
+    useEffect(() => {
+        if (searchParams.get('nova') !== '1' || !provider) return
+        setSearchParams({}, { replace: true })
+        handleCreateNew()
+    }, [searchParams, provider, setSearchParams])
+
     const handleEdit = (proposal: Proposal) => {
         setSelectedProposal(proposal)
         setShowForm(true)
@@ -57,15 +81,24 @@ export default function ProposalsPage() {
         refetch()
     }
 
-    const copyToClipboard = (slug: string) => {
-        const url = `${window.location.origin}/p/${slug}`
+    const copyToClipboard = (proposal: Proposal) => {
+        const url = `${window.location.origin}/p/${proposal.slug}`
         navigator.clipboard.writeText(url)
-        setCopiedSlug(slug)
+        updateOnboarding({ linkShared: true })
+        // Copiar o link é o sinal de que a proposta vai para o cliente (conta como "enviada" no Analytics).
+        if (!proposal.sharedAt) {
+            httpGateway
+                .markProposalShared(proposal.id)
+                .then(() => queryClient.invalidateQueries({ queryKey: ['proposals'] }))
+                .catch(() => undefined)
+        }
+        setCopiedSlug(proposal.slug)
         setTimeout(() => setCopiedSlug(null), 2000)
     }
 
     const openProposal = (slug: string) => {
         window.open(`${window.location.origin}/p/${slug}`, '_blank')
+        updateOnboarding({ linkShared: true })
     }
 
     const statusMutation = useMutation({
@@ -78,7 +111,7 @@ export default function ProposalsPage() {
         statusMutation.mutate({ proposalId, status })
     }
 
-    const atProposalLimit = !canCreateProposal(proposals.length)
+    const atProposalLimit = !canCreateProposal()
 
     if (!provider) {
         return (
@@ -111,6 +144,7 @@ export default function ProposalsPage() {
                         </p>
                     )}
                     <button
+                        data-tour="new-proposal"
                         onClick={handleCreateNew}
                         disabled={atProposalLimit}
                         className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -120,30 +154,41 @@ export default function ProposalsPage() {
                 </div>
             </div>
 
+            {signing && (
+                <SignProposalDialog proposalId={signing.id} clientName={signing.clientName} onDone={() => setSigning(null)} onSkip={() => setSigning(null)} />
+            )}
             {showForm && (
                 <ProposalForm
                     proposal={selectedProposal}
                     providerId={provider.id}
                     onClose={handleCloseForm}
-                    onSuccess={() => refetch()}
+                    onSuccess={() => {
+                        refetch()
+                        refreshUsage()
+                    }}
                 />
             )}
 
             {!showForm && (
                 <div className="space-y-4">
                     {proposals.length === 0 ? (
-                        <div className="text-center py-12 bg-white/2 border border-white/10 rounded-2xl">
-                            <p className="text-white/40 mb-4">Nenhuma proposta criada</p>
-                            <button
-                                onClick={handleCreateNew}
-                                className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] transition-colors"
-                            >
-                                <PlusCircle className="w-4 h-4" /> Criar Primeira Proposta
-                            </button>
-                        </div>
+                        <EmptyState
+                            icon={FileText}
+                            title="Nenhuma proposta ainda"
+                            description="Uma proposta é uma página que seu cliente navega, escolhe o pacote, vê o total e aceita online. Comece por um modelo do seu segmento — leva poucos minutos."
+                            article="criar-proposta"
+                            action={
+                                <button
+                                    onClick={handleCreateNew}
+                                    className="inline-flex items-center gap-2 bg-[#C9A84C] text-black px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#d8b65a] transition-colors"
+                                >
+                                    <PlusCircle className="w-4 h-4" /> Criar primeira proposta
+                                </button>
+                            }
+                        />
                     ) : (
                         <div className="grid gap-4">
-                            {proposals.map((proposal: Proposal) => {
+                            {proposals.map((proposal: Proposal, cardIndex: number) => {
                                 const commercialStatus = proposal.commercialStatus ?? 'sem_resposta'
                                 const surfaceClass = STATUS_SURFACE[commercialStatus]
 
@@ -161,6 +206,14 @@ export default function ProposalsPage() {
                                                             {proposal.theme.replace('_', ' ')}
                                                         </span>
                                                     )}
+                                                    {proposal.lastResponse && (
+                                                        <span
+                                                            title={`${RESPONSE_LABEL[proposal.lastResponse.type]} por ${proposal.lastResponse.signerName} em ${new Date(proposal.lastResponse.createdAt).toLocaleString('pt-BR')}`}
+                                                            className={`text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full border ${proposal.lastResponse.type === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25' : proposal.lastResponse.type === 'DECLINED' ? 'bg-red-500/10 text-red-300 border-red-500/25' : 'bg-amber-500/10 text-amber-200 border-amber-500/25'}`}
+                                                        >
+                                                            {RESPONSE_LABEL[proposal.lastResponse.type]} · {proposal.lastResponse.signerName.split(' ')[0]}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-white/30 mt-0.5 font-mono">{proposal.slug}</p>
                                                 <p className="text-[11px] text-white/20 mt-1">
@@ -168,21 +221,37 @@ export default function ProposalsPage() {
                                                 </p>
                                             </div>
 
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 flex-wrap justify-end" data-tour={cardIndex === 0 ? 'proposal-actions' : undefined}>
                                                 <button
                                                     onClick={() => openProposal(proposal.slug)}
                                                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white/5 text-white/40 rounded-lg hover:bg-white/10 hover:text-white/70 transition"
                                                 >
                                                     <ExternalLink className="w-3.5 h-3.5" /> Abrir
                                                 </button>
+                                                <a
+                                                    href={printUrl(proposal.slug)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Baixar PDF (com o comprovante, se aceita)"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white/5 text-white/70 rounded-lg hover:bg-white/10 transition"
+                                                >
+                                                    <FileDown className="w-3.5 h-3.5" /> PDF
+                                                </a>
                                                 <button
-                                                    onClick={() => copyToClipboard(proposal.slug)}
+                                                    onClick={() => copyToClipboard(proposal)}
                                                     className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition ${copiedSlug === proposal.slug ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                                                 >
                                                     {copiedSlug === proposal.slug
                                                         ? <><Check className="w-3.5 h-3.5" /> Copiado</>
                                                         : <><Link2 className="w-3.5 h-3.5" /> Copiar Link</>
                                                     }
+                                                </button>
+                                                <button
+                                                    onClick={() => setSigning(proposal)}
+                                                    title="Assinar a proposta em nome da empresa"
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white/5 text-white/70 rounded-lg hover:bg-white/10 transition"
+                                                >
+                                                    <FileSignature className="w-3.5 h-3.5" /> Assinar
                                                 </button>
                                                 <button
                                                     onClick={() => handleEdit(proposal)}
@@ -193,11 +262,13 @@ export default function ProposalsPage() {
                                             </div>
                                         </div>
 
+                                        <div data-tour={cardIndex === 0 ? 'proposal-status' : undefined}>
                                         <StatusWorkflow
                                             proposalId={proposal.id}
                                             currentStatus={commercialStatus}
                                             onUpdate={handleStatusUpdate}
                                         />
+                                        </div>
 
                                         {proposal.serviceDate && (
                                             <p className="text-xs text-white/40 inline-flex items-center gap-1">
@@ -212,6 +283,7 @@ export default function ProposalsPage() {
                     )}
                 </div>
             )}
+            <GuidedTour id="proposals" steps={TOUR} />
         </div>
     )
 }

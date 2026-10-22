@@ -1,85 +1,63 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { PLANS, type PlanId, type Plan } from '../../shared/plans'
+import { createContext, useContext, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { PLANS, planIdForTier, type Plan } from '../../shared/plans'
+import type { Entitlements, WorkspaceDetails } from '../../shared/types'
+import { httpGateway } from '../../infra/gateway/HttpGateway'
 import { useAuth } from './AuthContext'
 
 type PlanContextValue = {
     currentPlan: Plan
-    setPlan: (planId: PlanId) => void
-    canCreateProposal: (currentCount: number) => boolean
-    canAddProvider: (currentCount: number) => boolean
-    isAtLimit: (resource: 'proposals' | 'providers', currentCount: number) => boolean
+    /** Limites reais calculados pelo servidor para a empresa ativa. */
+    entitlements: Entitlements | null
+    usage: WorkspaceDetails['usage'] | null
+    /** Só o dono assina ou troca de plano. */
+    canManageBilling: boolean
+    /** Situação da cobrança no Stripe (ACTIVE, PAST_DUE…). */
+    billingStatus: 'INACTIVE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    /** Tem (ou teve) assinatura paga: o portal do Stripe está disponível. */
+    hasSubscription: boolean
+    canCreateProposal: () => boolean
+    refreshUsage: () => void
 }
 
 const PlanContext = createContext<PlanContextValue | null>(null)
 
-function normalizeStoredPlanId(savedPlanId: string | null): PlanId {
-    switch (savedPlanId) {
-        case 'starter':
-        case 'basic':
-            return 'basic'
-        case 'pro':
-        case 'agency':
-            return 'pro'
-        case 'courtesy':
-            return 'courtesy'
-        case 'free':
-        default:
-            return 'free'
-    }
-}
-
 export function PlanProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth()
+    const { activeWorkspace, isAuthenticated } = useAuth()
 
-    // Em produção virá do backend/Stripe webhook
-    // Para MVP, usa localStorage como fallback
-    const [planId, setPlanId] = useState<PlanId>(() => {
-        return normalizeStoredPlanId(localStorage.getItem('cockpitch_plan'))
+    // Uso do mês (propostas, pessoas) da empresa ativa; o cache é descartado ao trocar de empresa.
+    const { data: details, refetch } = useQuery({
+        queryKey: ['workspace-current', activeWorkspace?.id],
+        queryFn: () => httpGateway.getCurrentWorkspace(),
+        enabled: isAuthenticated && !!activeWorkspace,
+        staleTime: 30_000,
     })
 
-    const backendPlanId: PlanId | null = (() => {
-        if (user?.licensePolicy === 'COURTESY') return 'courtesy'
-        if (!user?.planTier) return null
-        if (user.billingStatus && !['ACTIVE', 'PAST_DUE'].includes(user.billingStatus)) return 'free'
+    const entitlements = details?.entitlements ?? activeWorkspace?.entitlements ?? null
+    const currentPlan = entitlements?.isCourtesy ? PLANS.courtesy : PLANS[planIdForTier(entitlements?.effectiveTier)]
+    const usage = details?.usage ?? null
+    const billingStatus = details?.billingStatus ?? activeWorkspace?.billingStatus ?? 'INACTIVE'
+    const hasSubscription = !entitlements?.isCourtesy && (billingStatus === 'ACTIVE' || billingStatus === 'PAST_DUE')
 
-        switch (user.planTier) {
-            case 'STARTER':
-                return 'basic'
-            case 'PRO':
-                return 'pro'
-            case 'AGENCY':
-                return 'pro'
-            case 'FREE':
-            default:
-                return 'free'
-        }
-    })()
-
-    const currentPlan = PLANS[backendPlanId ?? planId]
-
-    const setPlan = (id: PlanId) => {
-        setPlanId(id)
-        localStorage.setItem('cockpitch_plan', id)
-    }
-
-    const canCreateProposal = (currentCount: number) => {
-        const limit = currentPlan.limits.proposalsPerMonth
-        return limit === -1 || currentCount < limit
-    }
-
-    const canAddProvider = (currentCount: number) => {
-        const limit = currentPlan.limits.providersMax
-        return limit === -1 || currentCount < limit
-    }
-
-    const isAtLimit = (resource: 'proposals' | 'providers', currentCount: number) => {
-        if (resource === 'proposals') return !canCreateProposal(currentCount)
-        if (resource === 'providers') return !canAddProvider(currentCount)
-        return false
+    const canCreateProposal = () => {
+        const limit = entitlements?.proposalsPerMonth ?? currentPlan.limits.proposalsPerMonth
+        if (limit < 0) return true
+        return (usage?.proposalsThisMonth ?? 0) < limit
     }
 
     return (
-        <PlanContext.Provider value={{ currentPlan, setPlan, canCreateProposal, canAddProvider, isAtLimit }}>
+        <PlanContext.Provider
+            value={{
+                currentPlan,
+                entitlements,
+                usage,
+                canManageBilling: activeWorkspace?.role === 'OWNER',
+                billingStatus,
+                hasSubscription,
+                canCreateProposal,
+                refreshUsage: () => void refetch(),
+            }}
+        >
             {children}
         </PlanContext.Provider>
     )

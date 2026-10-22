@@ -1,17 +1,64 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { httpGateway } from '../../infra/gateway/HttpGateway'
 import DashboardMetrics from '../components/DashboardMetrics'
 import PlanSelector from '../components/PlanSelector'
 import { usePlan } from '../context/PlanContext'
+import { proposalFunnel } from '../../shared/proposalMetrics'
+import type { Proposal } from '../../shared/types'
 import { ChartSpline, Lock, Sparkles, BarChart3, ArrowRight } from 'lucide-react'
 
 export default function AnalyticsPage() {
-    const { user } = useAuth()
-    const { currentPlan } = usePlan()
+    const { user, refreshUser } = useAuth()
+    const { currentPlan, entitlements, usage, canManageBilling, billingStatus, hasSubscription, refreshUsage } = usePlan()
     const [showPlanSelector, setShowPlanSelector] = useState(false)
-    const canUpgradePlan = currentPlan.id === 'free' || currentPlan.id === 'basic'
+    const [portalLoading, setPortalLoading] = useState(false)
+    const [portalError, setPortalError] = useState<string | null>(null)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const checkoutResult = searchParams.get('checkout')
+
+    // Volta do Stripe: sincroniza na hora e, por garantia, recarrega o plano mais algumas vezes (o webhook também atualiza).
+    useEffect(() => {
+        if (checkoutResult !== 'success' && checkoutResult !== 'portal') return
+        const sessionId = searchParams.get('session_id')
+        const refresh = () => {
+            refreshUser()
+            refreshUsage()
+        }
+        httpGateway.syncBilling(sessionId).catch(() => undefined).finally(refresh)
+        if (sessionId) {
+            searchParams.delete('session_id')
+            setSearchParams(searchParams, { replace: true })
+        }
+        let attempts = 0
+        const timer = window.setInterval(() => {
+            attempts += 1
+            refresh()
+            if (attempts >= 4) window.clearInterval(timer)
+        }, 3000)
+        return () => window.clearInterval(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [checkoutResult])
+
+    const openPortal = async () => {
+        setPortalLoading(true)
+        setPortalError(null)
+        try {
+            const { url } = await httpGateway.openBillingPortal()
+            window.location.assign(url)
+        } catch (err) {
+            setPortalError(err instanceof Error ? err.message : 'Não foi possível abrir o portal de assinatura.')
+            setPortalLoading(false)
+        }
+    }
+
+    const dismissCheckoutNotice = () => {
+        searchParams.delete('checkout')
+        setSearchParams(searchParams, { replace: true })
+    }
+    const canUpgradePlan = canManageBilling && currentPlan.id !== 'team' && currentPlan.id !== 'courtesy'
     const isCourtesy = currentPlan.id === 'courtesy'
 
     const { data: provider } = useQuery({
@@ -34,13 +81,40 @@ export default function AnalyticsPage() {
         queryFn: () => httpGateway.listProviders(),
     })
 
-    const canViewAnalytics = currentPlan.limits.analytics
-    const accepted = proposals.filter((proposal: any) => proposal.commercialStatus === 'aceita').length
-    const negotiating = proposals.filter((proposal: any) => proposal.commercialStatus === 'negociando').length
-    const conversionRate = proposals.length ? Math.round((accepted / proposals.length) * 100) : 0
+    const canViewAnalytics = entitlements?.analytics ?? currentPlan.limits.analytics
+    const { sent, accepted, negotiating, conversionRate } = proposalFunnel(proposals as Proposal[])
 
     return (
         <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
+            {checkoutResult && (
+                <div
+                    role="status"
+                    className={`flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-sm ${
+                        checkoutResult === 'success'
+                            ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
+                            : 'border-white/10 bg-white/5 text-white/70'
+                    }`}
+                >
+                    <span>
+                        {checkoutResult === 'success'
+                            ? 'Pagamento confirmado! Seu plano é atualizado em alguns segundos.'
+                            : checkoutResult === 'portal'
+                                ? 'Assinatura conferida. Alterações feitas no portal já valem por aqui.'
+                                : 'Checkout cancelado. Nenhuma cobrança foi feita.'}
+                    </span>
+                    <button type="button" onClick={dismissCheckoutNotice} className="text-xs underline underline-offset-2">
+                        Fechar
+                    </button>
+                </div>
+            )}
+            {billingStatus === 'PAST_DUE' && canManageBilling && (
+                <div role="alert" className="flex items-center justify-between gap-4 flex-wrap rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+                    <span>Não conseguimos cobrar a última fatura. Atualize a forma de pagamento para manter seu plano.</span>
+                    <button type="button" onClick={openPortal} disabled={portalLoading} className="rounded-full bg-amber-300 px-4 py-1.5 text-xs font-semibold text-black hover:bg-amber-200 disabled:opacity-60">
+                        {portalLoading ? 'Abrindo…' : 'Atualizar pagamento'}
+                    </button>
+                </div>
+            )}
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
@@ -61,8 +135,8 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                     <BarChart3 className="w-4 h-4 text-[#C9A84C] mb-3" />
-                    <p className="text-2xl font-light text-white">{proposals.length}</p>
-                    <p className="text-xs text-white/40 mt-1">Propostas mapeadas</p>
+                    <p className="text-2xl font-light text-white">{sent}</p>
+                    <p className="text-xs text-white/40 mt-1">Propostas enviadas</p>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                     <Sparkles className="w-4 h-4 text-emerald-400 mb-3" />
@@ -134,37 +208,50 @@ export default function AnalyticsPage() {
                                 <p className="mt-2 text-sm text-white/45">{user.licensePolicyNote}</p>
                             )}
                         </div>
-                        {canUpgradePlan && (
-                            <button
-                                onClick={() => setShowPlanSelector(true)}
-                                className="px-4 py-2 bg-[#C9A84C] text-black rounded-full font-semibold text-sm hover:bg-[#d8b65a] transition-colors"
-                            >
-                                Fazer Upgrade
-                            </button>
-                        )}
+                        <div className="flex flex-wrap justify-end gap-2">
+                            {canManageBilling && hasSubscription && (
+                                <button
+                                    onClick={openPortal}
+                                    disabled={portalLoading}
+                                    className="px-4 py-2 bg-white/10 text-white rounded-full font-medium text-sm hover:bg-white/15 transition-colors disabled:opacity-60"
+                                >
+                                    {portalLoading ? 'Abrindo…' : 'Gerenciar assinatura'}
+                                </button>
+                            )}
+                            {canUpgradePlan && (
+                                <button
+                                    onClick={() => setShowPlanSelector(true)}
+                                    className="px-4 py-2 bg-[#C9A84C] text-black rounded-full font-semibold text-sm hover:bg-[#d8b65a] transition-colors"
+                                >
+                                    {hasSubscription ? 'Trocar de plano' : 'Fazer Upgrade'}
+                                </button>
+                            )}
+                        </div>
                     </div>
+                    {portalError && <p className="mt-3 text-sm text-red-300">{portalError}</p>}
+                    {canManageBilling && hasSubscription && (
+                        <p className="mt-3 text-xs text-white/40">Cartão, faturas, troca de plano e cancelamento ficam no portal seguro do Stripe.</p>
+                    )}
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
                         <div>
                             <p className="text-xs text-white/45">Propostas/mês</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.proposalsPerMonth === -1
+                                {(entitlements?.proposalsPerMonth ?? currentPlan.limits.proposalsPerMonth) === -1
                                     ? 'Ilimitado'
-                                    : `${proposals.length} / ${currentPlan.limits.proposalsPerMonth}`}
+                                    : `${usage?.proposalsThisMonth ?? 0} / ${entitlements?.proposalsPerMonth ?? currentPlan.limits.proposalsPerMonth}`}
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs text-white/45">Prestadores</p>
+                            <p className="text-xs text-white/45">Pessoas na equipe</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.providersMax === -1
-                                    ? 'Ilimitado'
-                                    : `${providers.length} / ${currentPlan.limits.providersMax}`}
+                                {`${usage?.members ?? 1} / ${entitlements?.members ?? currentPlan.limits.members}`}
                             </p>
                         </div>
                         <div>
                             <p className="text-xs text-white/45">Analytics</p>
                             <p className="font-semibold text-white mt-0.5">
-                                {currentPlan.limits.analytics ? 'Ativo' : 'Indisponível'}
+                                {canViewAnalytics ? 'Ativo' : 'Indisponível'}
                             </p>
                         </div>
                     </div>

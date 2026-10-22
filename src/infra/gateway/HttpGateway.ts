@@ -3,6 +3,9 @@
  * Centraliza chamadas REST ao backend dedicado
  */
 
+import type { BlockLibrary, OnboardingStatus, ProposalSignatures, SavedBlockItem, SavedSignatureProfile, SignatureDrawing, ProposalResponse, ProposalResponseType, ProposalTemplate, WorkspaceDetails, WorkspaceInviteItem, WorkspaceMemberItem } from '../../shared/types'
+import type { ProposalBlock } from '../../shared/blocks'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 function normalizePackage(pkg: any) {
@@ -48,8 +51,48 @@ function normalizeProposal(proposal: any) {
     }
 }
 
+export class ApiError extends Error {
+    constructor(
+        public readonly status: number,
+        message: string,
+        public readonly code?: string,
+        /** Corpo da resposta de erro (ex.: dados do Google para completar o cadastro). */
+        public readonly details?: any
+    ) {
+        super(message)
+        this.name = 'ApiError'
+    }
+}
+
+const FALLBACK_MESSAGES: Record<number, string> = {
+    400: 'Dados inválidos. Revise os campos e tente novamente.',
+    401: 'Sua sessão expirou. Entre novamente.',
+    403: 'Você não tem permissão para esta ação.',
+    404: 'Não encontrado.',
+    409: 'Já existe um registro com esses dados.',
+    413: 'Arquivo ou conteúdo grande demais.',
+    429: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+}
+
+/** Extrator central de mensagem de erro da API (formato `{ message, code?, issues? }`). */
+export function extractErrorMessage(status: number, data: any): string {
+    const issue = Array.isArray(data?.issues) ? data.issues[0] : null
+    if (issue?.message && issue.message !== 'Required') {
+        const field = Array.isArray(issue.path) && issue.path.length ? `${issue.path.join('.')}: ` : ''
+        return `${field}${issue.message}`
+    }
+    if (typeof data?.message === 'string' && data.message && status < 500) return data.message
+    return FALLBACK_MESSAGES[status] ?? 'Algo deu errado. Tente novamente em instantes.'
+}
+
 class HttpGateway {
     private token: string | null = null
+    private workspaceId: string | null = null
+
+    /** Empresa ativa: enviada em toda chamada autenticada (o backend valida a associação). */
+    setWorkspace(workspaceId: string | null) {
+        this.workspaceId = workspaceId
+    }
 
     setToken(token: string) {
         this.token = token
@@ -71,6 +114,7 @@ class HttpGateway {
 
         if (requireAuth && this.token) {
             headers['Authorization'] = `Bearer ${this.token}`
+            if (this.workspaceId) headers['X-Workspace-Id'] = this.workspaceId
         }
 
         const response = await fetch(`${API_URL}${path}`, {
@@ -79,16 +123,35 @@ class HttpGateway {
             body: body ? JSON.stringify(body) : undefined
         })
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.message || 'Request failed')
+        // Respostas sem corpo (204) ou não-JSON (ex.: página de erro do proxy) não podem quebrar o parse.
+        const text = await response.text()
+        let data: any = null
+        if (text) {
+            try {
+                data = JSON.parse(text)
+            } catch {
+                data = null
+            }
         }
 
-        return response.json()
+        if (!response.ok) {
+            if (response.status === 401 && requireAuth && this.token) {
+                // Sessão expirada/inválida: tratamento central (AuthContext escuta este evento).
+                window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+            }
+            throw new ApiError(response.status, extractErrorMessage(response.status, data), data?.code, data)
+        }
+
+        return data as T
     }
 
-    async register(email: string, password: string, name: string) {
-        const result = await this.request<any>('POST', '/auth/register', { email, password, name }, false)
+    async register(
+        email: string,
+        password: string,
+        name: string,
+        extra: { workspaceName?: string; segment?: string; inviteToken?: string } = {}
+    ) {
+        const result = await this.request<any>('POST', '/auth/register', { email, password, name, ...extra }, false)
         if (result.token) this.setToken(result.token)
         return result
     }
@@ -97,6 +160,36 @@ class HttpGateway {
         const result = await this.request<any>('POST', '/auth/login', { email, password }, false)
         if (result.token) this.setToken(result.token)
         return result
+    }
+
+    async getGoogleConfig(): Promise<{ enabled: boolean; clientId: string | null }> {
+        return this.request('GET', '/auth/google/config', undefined, false)
+    }
+
+    /** Entrar/cadastrar com Google. Gmail sem conta → ApiError GOOGLE_ACCOUNT_NOT_FOUND (details.google). */
+    async loginWithGoogle(body: { credential: string; workspaceName?: string; segment?: string; inviteToken?: string }) {
+        const result = await this.request<any>('POST', '/auth/google', body, false)
+        if (result.token) this.setToken(result.token)
+        return result
+    }
+
+    // ── Primeiros passos e tours ──
+    async getOnboarding(): Promise<OnboardingStatus> {
+        return this.request('GET', '/workspaces/current/onboarding')
+    }
+
+    async updateOnboarding(patch: { linkShared?: true; dismissedChecklist?: boolean; tourSeen?: string; toursDisabled?: boolean; resetTours?: true }) {
+        return this.request<{ onboarding: unknown }>('PATCH', '/auth/me/onboarding', patch)
+    }
+
+    async getNotificationPreferences(): Promise<{ notifyOnOpen: boolean; notifyOnResponse: boolean }> {
+        const result = await this.request<any>('GET', '/workspaces/current/notifications')
+        return result.preferences
+    }
+
+    async updateNotificationPreferences(patch: { notifyOnOpen?: boolean; notifyOnResponse?: boolean }) {
+        const result = await this.request<any>('PATCH', '/workspaces/current/notifications', patch)
+        return result.preferences as { notifyOnOpen: boolean; notifyOnResponse: boolean }
     }
 
     async getMe() {
@@ -132,6 +225,8 @@ class HttpGateway {
         formData.append('file', file)
         const headers: Record<string, string> = {}
         if (this.token) headers['Authorization'] = `Bearer ${this.token}`
+        // Conta o arquivo na cota da empresa ativa (e não na mais antiga do usuário).
+        if (this.workspaceId) headers['X-Workspace-Id'] = this.workspaceId
         const response = await fetch(`${API_URL}/upload`, { method: 'POST', headers, body: formData })
         if (!response.ok) {
             let message = 'Upload failed'
@@ -208,7 +303,7 @@ class HttpGateway {
 
     async getPublicProposalBySlug(slug: string) {
         const result = await this.request<any>('GET', `/public/proposals/${slug}`, undefined, false)
-        return normalizeProposal(result.proposal)
+        return { ...normalizeProposal(result.proposal), acceptance: result.acceptance, branding: result.branding, signatures: result.signatures as ProposalSignatures | undefined }
     }
 
     async createProposal(data: any) {
@@ -219,6 +314,98 @@ class HttpGateway {
     async updateProposal(proposalId: string, data: any) {
         const result = await this.request<any>('PATCH', `/proposals/${proposalId}`, data)
         return normalizeProposal(result.proposal)
+    }
+
+    // ── Aceite online ──
+    async submitProposalResponse(
+        slug: string,
+        body: {
+            type: ProposalResponseType
+            signerName: string
+            signerEmail: string
+            signerDocument?: string
+            message?: string
+            packageId?: string
+            optionalItemIds?: string[]
+            agreeTerms?: boolean
+            /** Aceite: assinatura e código enviado ao e-mail. */
+            signature?: SignatureDrawing
+            code?: string
+        }
+    ): Promise<Pick<ProposalResponse, 'id' | 'type' | 'createdAt' | 'totalCents' | 'selection' | 'contentHash'>> {
+        const result = await this.request<{ response: ProposalResponse }>('POST', `/public/proposals/${encodeURIComponent(slug)}/responses`, body, false)
+        return result.response
+    }
+
+    /** Envia ao cliente o código de 6 dígitos para assinar o aceite. */
+    async requestClientSignatureCode(slug: string, body: { signerName: string; signerEmail: string }) {
+        return this.request<{ sentTo: string; expiresAt: string }>('POST', `/public/proposals/${encodeURIComponent(slug)}/signature-code`, body, false)
+    }
+
+    // ── Assinatura da empresa ──
+    async getProposalSignatures(proposalId: string) {
+        return this.request<ProposalSignatures>('GET', `/proposals/${proposalId}/signatures`)
+    }
+
+    async requestProviderSignatureCode(proposalId: string) {
+        return this.request<{ sentTo: string; expiresAt: string }>('POST', `/proposals/${proposalId}/signature/code`)
+    }
+
+    async signProposal(proposalId: string, body: { code: string; cpf: string; signerTitle?: string; signature: SignatureDrawing; saveToProfile: boolean }) {
+        return this.request<ProposalSignatures>('POST', `/proposals/${proposalId}/signature`, body)
+    }
+
+    async getMySignature() {
+        return this.request<SavedSignatureProfile>('GET', '/me/signature')
+    }
+
+    async listProposalResponses(proposalId: string): Promise<ProposalResponse[]> {
+        const result = await this.request<{ responses: ProposalResponse[] }>('GET', `/proposals/${proposalId}/responses`)
+        return result.responses
+    }
+
+    /** Marca a proposta como enviada (link copiado/compartilhado). Idempotente. */
+    async markProposalShared(proposalId: string) {
+        return this.request<{ sharedAt: string }>('POST', `/proposals/${proposalId}/shared`)
+    }
+
+    async reopenProposal(proposalId: string) {
+        return this.request<{ proposal: { id: string; status: string; commercialStatus: string } }>('POST', `/proposals/${proposalId}/reopen`)
+    }
+
+    // ── Modelos de proposta ──
+    async listTemplates(): Promise<{ system: ProposalTemplate[]; workspace: ProposalTemplate[] }> {
+        return this.request('GET', '/templates')
+    }
+
+    async createTemplate(data: {
+        name: string
+        description?: string
+        segment?: string
+        blocks: ProposalBlock[]
+        theme?: string
+        themeCustom?: Record<string, unknown> | null
+    }): Promise<ProposalTemplate> {
+        const result = await this.request<{ template: ProposalTemplate }>('POST', '/templates', data)
+        return result.template
+    }
+
+    async deleteTemplate(templateId: string) {
+        return this.request<void>('DELETE', `/templates/${templateId}`)
+    }
+
+    // ── Biblioteca de blocos ──
+    async getBlockLibrary(): Promise<BlockLibrary> {
+        return this.request('GET', '/block-library')
+    }
+
+    async saveBlock(name: string, block: ProposalBlock): Promise<SavedBlockItem> {
+        const result = await this.request<{ saved: SavedBlockItem }>('POST', '/block-library', { name, block })
+        return result.saved
+    }
+
+    async deleteSavedBlock(id: string) {
+        return this.request<void>('DELETE', `/block-library/${id}`)
     }
 
     async deleteProposal(proposalId: string) {
@@ -235,9 +422,10 @@ class HttpGateway {
                 sessionId: data.sessionId ?? `session-${Date.now()}`,
                 viewedAt: new Date().toISOString(),
             },
-            false
+            // Com sessão aberta, o servidor reconhece a própria equipe e não conta a abertura.
+            true
         )
-        return result.view
+        return result?.view ?? null
     }
 
     async updateCommercialStatus(
@@ -250,8 +438,66 @@ class HttpGateway {
         return normalizeProposal(result.proposal)
     }
 
-    async createStripeCheckout(priceId: string): Promise<{ sessionId: string }> {
-        return this.request<{ sessionId: string }>('POST', '/stripe/create-checkout', { priceId }, true)
+    // ---------- Workspaces e equipe ----------
+    async getCurrentWorkspace(): Promise<WorkspaceDetails> {
+        const result = await this.request<{ workspace: WorkspaceDetails }>('GET', '/workspaces/current')
+        return result.workspace
+    }
+
+    async updateWorkspace(data: { name?: string; segment?: string; brandColor?: string | null; logoUrl?: string | null }) {
+        const result = await this.request<any>('PATCH', '/workspaces/current', data)
+        return result.workspace
+    }
+
+    async listMembers(): Promise<{ members: WorkspaceMemberItem[]; invites: WorkspaceInviteItem[] }> {
+        return this.request('GET', '/workspaces/current/members')
+    }
+
+    async createInvite(email: string, role: 'ADMIN' | 'MEMBER'): Promise<{ invite: WorkspaceInviteItem; inviteUrl: string }> {
+        return this.request('POST', '/workspaces/current/invites', { email, role })
+    }
+
+    async revokeInvite(inviteId: string) {
+        return this.request<void>('DELETE', `/workspaces/current/invites/${inviteId}`)
+    }
+
+    async updateMemberRole(memberId: string, role: 'ADMIN' | 'MEMBER') {
+        return this.request<any>('PATCH', `/workspaces/current/members/${memberId}`, { role })
+    }
+
+    async removeMember(memberId: string) {
+        return this.request<void>('DELETE', `/workspaces/current/members/${memberId}`)
+    }
+
+    async getInvite(token: string): Promise<{
+        email: string
+        role: 'ADMIN' | 'MEMBER'
+        expiresAt: string
+        workspace: { name: string; logoUrl?: string | null }
+    }> {
+        const result = await this.request<any>('GET', `/invites/${encodeURIComponent(token)}`, undefined, false)
+        return result.invite
+    }
+
+    async acceptInvite(token: string): Promise<{ workspaceId: string }> {
+        return this.request('POST', `/invites/${encodeURIComponent(token)}/accept`)
+    }
+
+    /** Abre o checkout; quem já assina recebe o portal do Stripe para confirmar a troca de plano. */
+    async createStripeCheckout(
+        planTier: 'STARTER' | 'PRO' | 'AGENCY'
+    ): Promise<{ sessionId: string | null; url: string | null; mode: 'checkout' | 'portal' }> {
+        return this.request('POST', '/stripe/create-checkout', { planTier }, true)
+    }
+
+    /** Portal do Stripe: cartão, faturas, troca de plano e cancelamento. */
+    async openBillingPortal(): Promise<{ url: string }> {
+        return this.request('POST', '/stripe/portal', {}, true)
+    }
+
+    /** Volta do checkout/portal: sincroniza o plano na hora (sem esperar o webhook). */
+    async syncBilling(sessionId?: string | null): Promise<{ planTier: string; billingStatus: string }> {
+        return this.request('POST', '/stripe/sync', sessionId ? { sessionId } : {}, true)
     }
 }
 

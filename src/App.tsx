@@ -9,6 +9,11 @@ import ProposalsPage from './interface/pages/ProposalsPage'
 import ProposalPublicPage from './interface/pages/ProposalPublicPage'
 import AnalyticsPage from './interface/pages/AnalyticsPage'
 import PackagesPage from './interface/pages/PackagesPage'
+import TeamPage from './interface/pages/TeamPage'
+import InvitePage from './interface/pages/InvitePage'
+import { PrivacyPage, TermsPage } from './interface/pages/LegalPages'
+import ProposalPrintPage from './interface/pages/ProposalPrintPage'
+import HelpCenterPage from './interface/pages/HelpCenterPage'
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth()
@@ -44,10 +49,19 @@ function AppRoutes() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/proposals" element={<ProposalsPage />} />
                 <Route path="/packages" element={<PackagesPage />} />
+                <Route path="/equipe" element={<TeamPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/ajuda" element={<HelpCenterPage />} />
+                <Route path="/ajuda/:slug" element={<HelpCenterPage />} />
             </Route>
+            {/* Convite de equipe (público: funciona logado ou não) */}
+            <Route path="/convite/:token" element={<InvitePage />} />
             {/* Rota pública para propostas */}
             <Route path="/p/:slug" element={<ProposalPublicPage />} />
+            <Route path="/p/:slug/print" element={<ProposalPrintPage />} />
+            <Route path="/p/:slug/comprovante" element={<ProposalPrintPage receiptOnly />} />
+            <Route path="/privacidade" element={<PrivacyPage />} />
+            <Route path="/termos" element={<TermsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
     )

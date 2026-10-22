@@ -17,5 +17,5 @@
     "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"],
-  "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
+  "exclude": ["node_modules", "dist", "src/**/__tests__", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
 } 
