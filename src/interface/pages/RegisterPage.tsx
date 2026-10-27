@@ -43,8 +43,9 @@ export default function RegisterPage() {
         }
         setIsSubmitting(true)
         try {
-            await loginWithGoogle(credential, inviteToken ? { inviteToken } : { workspaceName, segment: getValues('segment') })
+            const { confirmationSentTo } = await loginWithGoogle(credential, inviteToken ? { inviteToken } : { workspaceName, segment: getValues('segment') })
             clearPendingGoogle()
+            if (confirmationSentTo) return navigate('/confirmar-conta', { state: { email: confirmationSentTo } })
             navigate('/dashboard')
         } catch (err) {
             setGoogleError(err instanceof Error ? err.message : 'Não foi possível criar a conta com Google.')
@@ -58,9 +59,11 @@ export default function RegisterPage() {
         // Convite ou empresa já preenchida: conclui direto. Senão, guarda e pede só a empresa.
         if (inviteToken || (getValues('workspaceName')?.trim().length ?? 0) >= 2) return finishWithGoogle(credential)
         try {
-            await loginWithGoogle(credential)
+            const { confirmationSentTo } = await loginWithGoogle(credential)
             clearPendingGoogle()
-            navigate('/dashboard') // já tinha conta com esse Gmail
+            // Já tinha conta com esse e-mail: vincula pelo link do e-mail (ou entra direto, se já vinculada).
+            if (confirmationSentTo) return navigate('/confirmar-conta', { state: { email: confirmationSentTo } })
+            navigate('/dashboard')
         } catch (err) {
             if (err instanceof ApiError && err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
                 const pending = { credential, email: err.details?.google?.email ?? '', name: err.details?.google?.name ?? '' }
