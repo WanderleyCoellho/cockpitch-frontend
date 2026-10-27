@@ -166,9 +166,25 @@ class HttpGateway {
         return this.request('GET', '/auth/google/config', undefined, false)
     }
 
-    /** Entrar/cadastrar com Google. Gmail sem conta → ApiError GOOGLE_ACCOUNT_NOT_FOUND (details.google). */
+    /**
+     * Entrar/cadastrar com Google. Gmail sem conta → ApiError GOOGLE_ACCOUNT_NOT_FOUND (details.google).
+     * Primeiro login com Google → sem token, `confirmationSentTo` (link de confirmação foi para o e-mail).
+     */
     async loginWithGoogle(body: { credential: string; workspaceName?: string; segment?: string; inviteToken?: string }) {
         const result = await this.request<any>('POST', '/auth/google', body, false)
+        if (result.token) this.setToken(result.token)
+        return result
+    }
+
+    /** Tela do link do e-mail: para qual e-mail é a confirmação. */
+    async getGoogleConfirmation(token: string): Promise<{ email: string; name: string; newAccount: boolean; expiresAt: string }> {
+        const result = await this.request<any>('GET', `/auth/google/confirm/${encodeURIComponent(token)}`, undefined, false)
+        return result.confirmation
+    }
+
+    /** Confirma o e-mail, cria a senha e entra. */
+    async confirmGoogleAccount(token: string, password: string) {
+        const result = await this.request<any>('POST', `/auth/google/confirm/${encodeURIComponent(token)}`, { password }, false)
         if (result.token) this.setToken(result.token)
         return result
     }

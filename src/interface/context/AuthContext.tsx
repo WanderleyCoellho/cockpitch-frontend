@@ -11,8 +11,13 @@ type AuthContextType = {
     error: string | null
     login: (email: string, password: string) => Promise<void>
     register: (name: string, email: string, password: string, extra?: RegisterExtra) => Promise<void>
-    /** Entrar/cadastrar com Google (credencial do botão "Continuar com Google"). */
-    loginWithGoogle: (credential: string, extra?: RegisterExtra) => Promise<{ created: boolean; joinedWorkspaceId: string | null }>
+    /**
+     * Entrar/cadastrar com Google (credencial do botão "Continuar com Google").
+     * No primeiro login com Google não há sessão: `confirmationSentTo` é o e-mail que recebeu o link.
+     */
+    loginWithGoogle: (credential: string, extra?: RegisterExtra) => Promise<{ created: boolean; joinedWorkspaceId: string | null; confirmationSentTo: string | null }>
+    /** Link do e-mail de confirmação: cria a senha e entra. */
+    confirmGoogleAccount: (token: string, password: string) => Promise<void>
     logout: () => Promise<void>
     refreshUser: () => Promise<void>
     /** Empresas de que o usuário participa e a ativa no momento. */
@@ -148,13 +153,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setError(null)
         // O caso "Gmail sem conta" é tratado pela tela (completar cadastro), sem virar erro global.
         const result = await httpGateway.loginWithGoogle({ credential, ...extra })
+        // Primeiro login com Google: só entra depois do link do e-mail.
+        if (result.confirmationSentTo) return { created: false, joinedWorkspaceId: null, confirmationSentTo: result.confirmationSentTo as string }
         startSession(result)
-        if (result.joinedWorkspaceId) {
-            setActiveWorkspaceId(result.joinedWorkspaceId)
-            storeWorkspace(result.joinedWorkspaceId)
-            httpGateway.setWorkspace(result.joinedWorkspaceId)
-        }
-        return { created: !!result.created, joinedWorkspaceId: result.joinedWorkspaceId ?? null }
+        enterJoinedWorkspace(result.joinedWorkspaceId)
+        return { created: !!result.created, joinedWorkspaceId: result.joinedWorkspaceId ?? null, confirmationSentTo: null }
+    }
+
+    const confirmGoogleAccount = async (token: string, password: string) => {
+        setError(null)
+        const result = await httpGateway.confirmGoogleAccount(token, password)
+        startSession(result)
+        enterJoinedWorkspace(result.joinedWorkspaceId)
+    }
+
+    // Entrou na equipe de um convite: ela vira a empresa ativa.
+    const enterJoinedWorkspace = (workspaceId: string | null | undefined) => {
+        if (!workspaceId) return
+        setActiveWorkspaceId(workspaceId)
+        storeWorkspace(workspaceId)
+        httpGateway.setWorkspace(workspaceId)
     }
 
     const logout = async () => {
@@ -184,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 login,
                 register,
                 loginWithGoogle,
+                confirmGoogleAccount,
                 logout,
                 refreshUser,
                 workspaces,

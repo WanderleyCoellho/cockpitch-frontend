@@ -42,7 +42,8 @@ export default function InvitePage() {
         setAcceptError(null)
         setAccepting(true)
         try {
-            await loginWithGoogle(credential, { inviteToken: token })
+            const { confirmationSentTo } = await loginWithGoogle(credential, { inviteToken: token })
+            if (confirmationSentTo) return navigate('/confirmar-conta', { state: { email: confirmationSentTo } })
             navigate('/dashboard')
         } catch (err) {
             setAcceptError(err instanceof Error ? err.message : 'Não foi possível entrar com Google.')

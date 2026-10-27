@@ -11,6 +11,7 @@ import AnalyticsPage from './interface/pages/AnalyticsPage'
 import PackagesPage from './interface/pages/PackagesPage'
 import TeamPage from './interface/pages/TeamPage'
 import InvitePage from './interface/pages/InvitePage'
+import ConfirmAccountPage from './interface/pages/ConfirmAccountPage'
 import { PrivacyPage, TermsPage } from './interface/pages/LegalPages'
 import ProposalPrintPage from './interface/pages/ProposalPrintPage'
 import HelpCenterPage from './interface/pages/HelpCenterPage'
@@ -56,6 +57,8 @@ function AppRoutes() {
             </Route>
             {/* Convite de equipe (público: funciona logado ou não) */}
             <Route path="/convite/:token" element={<InvitePage />} />
+            <Route path="/confirmar-conta" element={<ConfirmAccountPage />} />
+            <Route path="/confirmar-conta/:token" element={<ConfirmAccountPage />} />
             {/* Rota pública para propostas */}
             <Route path="/p/:slug" element={<ProposalPublicPage />} />
             <Route path="/p/:slug/print" element={<ProposalPrintPage />} />

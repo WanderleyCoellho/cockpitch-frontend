@@ -23,7 +23,8 @@ export default function LoginPage() {
     const onGoogle = async (credential: string) => {
         setGoogleError(null)
         try {
-            await loginWithGoogle(credential)
+            const { confirmationSentTo } = await loginWithGoogle(credential)
+            if (confirmationSentTo) return navigate('/confirmar-conta', { state: { email: confirmationSentTo } })
             navigate(redirectTo)
         } catch (err) {
             if (err instanceof ApiError && err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
