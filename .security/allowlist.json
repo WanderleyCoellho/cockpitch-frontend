@@ -1,0 +1,7 @@
+[
+  {
+    "id": "npm:zod@3.25.76:GHSA-mrhx-c7xc-m3w5",
+    "motivo": "No frontend o zod valida só formulários no navegador da própria pessoa: entrada gigante só trava a aba dela, sem efeito no servidor. Migrar para zod 4 junto com o backend.",
+    "expira": "2026-12-27"
+  }
+]
