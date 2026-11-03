@@ -11,6 +11,12 @@ describe('extractErrorMessage', () => {
         expect(extractErrorMessage(400, data)).toBe('slug: String must contain at least 3 character(s)')
     })
 
+    it('campo obrigatório ausente não mostra o texto técnico do zod', () => {
+        const zod4 = { message: 'Dados inválidos', issues: [{ code: 'invalid_type', path: ['clientName'], message: 'Entrada inválida: esperava um texto, recebeu um valor "undefined"' }] }
+        expect(extractErrorMessage(400, zod4)).toBe('Dados inválidos')
+        expect(extractErrorMessage(400, { issues: [{ path: ['x'], message: 'Required' }] })).toBe('Dados inválidos. Revise os campos e tente novamente.')
+    })
+
     it('nunca mostra mensagem crua de erro 5xx', () => {
         expect(extractErrorMessage(500, { message: 'Internal server error' })).toBe('Algo deu errado. Tente novamente em instantes.')
     })

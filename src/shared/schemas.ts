@@ -94,16 +94,16 @@ export const PackageSchema = z
     })
     .superRefine((data, ctx) => {
         if (data.priceMode === 'FIXED' && (!data.fixedPrice?.trim() || parseMoneyToCents(data.fixedPrice) === null)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fixedPrice'], message: 'Informe o valor do pacote (ex.: 3.500,00)' })
+            ctx.addIssue({ code: 'custom', path: ['fixedPrice'], message: 'Informe o valor do pacote (ex.: 3.500,00)' })
         }
         if (data.discountType === 'PERCENT') {
             const n = parseDecimalInput(data.discountInput)
             if (n === null || n < 0 || n > 100) {
-                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountInput'], message: 'Percentual entre 0 e 100' })
+                ctx.addIssue({ code: 'custom', path: ['discountInput'], message: 'Percentual entre 0 e 100' })
             }
         }
         if (data.discountType === 'AMOUNT' && (!data.discountInput?.trim() || parseMoneyToCents(data.discountInput) === null)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountInput'], message: 'Valor do desconto inválido' })
+            ctx.addIssue({ code: 'custom', path: ['discountInput'], message: 'Valor do desconto inválido' })
         }
     })
 
@@ -171,3 +171,7 @@ export type RegisterFormData = z.infer<typeof RegisterSchema>
 export type PackageItemFormData = z.infer<typeof PackageItemSchema>
 export type PackageFormData = z.infer<typeof PackageSchema>
 export type ProposalFormData = z.infer<typeof ProposalSchema>
+/** Valores do formulário antes da validação (campos com padrão podem vir vazios). */
+export type PackageItemFormInput = z.input<typeof PackageItemSchema>
+export type PackageFormInput = z.input<typeof PackageSchema>
+export type ProposalFormInput = z.input<typeof ProposalSchema>
