@@ -12,12 +12,13 @@ import PackagesPage from './interface/pages/PackagesPage'
 import TeamPage from './interface/pages/TeamPage'
 import InvitePage from './interface/pages/InvitePage'
 import ConfirmAccountPage from './interface/pages/ConfirmAccountPage'
+import CreateWorkspacePage from './interface/pages/CreateWorkspacePage'
 import { PrivacyPage, TermsPage } from './interface/pages/LegalPages'
 import ProposalPrintPage from './interface/pages/ProposalPrintPage'
 import HelpCenterPage from './interface/pages/HelpCenterPage'
 
 function ProtectedRoute({ children }) {
-    const { isAuthenticated, loading } = useAuth()
+    const { isAuthenticated, loading, user } = useAuth()
 
     if (loading) {
         return (
@@ -29,6 +30,11 @@ function ProtectedRoute({ children }) {
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />
+    }
+
+    // Conta sem empresa: nada do painel funciona sem uma, então ela cria a sua primeiro.
+    if (user && !user.workspaces?.length) {
+        return <CreateWorkspacePage />
     }
 
     return children
