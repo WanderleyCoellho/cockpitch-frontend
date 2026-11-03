@@ -4,6 +4,11 @@ import type { ProposalMediaItem } from '../../../../shared/types'
 
 /** Mídias da página pública (usa as variáveis de tema --pp-*). */
 
+// Vídeos incorporados sem cookies de rastreamento para quem abre a proposta (LGPD):
+// YouTube pelo domínio youtube-nocookie e Vimeo com "do not track".
+const YOUTUBE_EMBED = 'https://www.youtube-nocookie.com/embed/'
+const vimeoEmbed = (id: string) => `https://player.vimeo.com/video/${id}?dnt=1`
+
 export function getEmbedUrl(url: string): string | null {
     if (!url) return null
 
@@ -14,25 +19,26 @@ export function getEmbedUrl(url: string): string | null {
         if (host === 'youtube.com' || host === 'm.youtube.com') {
             if (parsed.pathname === '/watch') {
                 const id = parsed.searchParams.get('v')
-                return id ? `https://www.youtube.com/embed/${id}` : null
+                return id ? `${YOUTUBE_EMBED}${id}` : null
             }
             if (parsed.pathname.startsWith('/shorts/')) {
                 const id = parsed.pathname.split('/')[2]
-                return id ? `https://www.youtube.com/embed/${id}` : null
+                return id ? `${YOUTUBE_EMBED}${id}` : null
             }
             if (parsed.pathname.startsWith('/embed/')) {
-                return url
+                const id = parsed.pathname.split('/')[2]
+                return id ? `${YOUTUBE_EMBED}${id}` : null
             }
         }
 
         if (host === 'youtu.be') {
             const id = parsed.pathname.replace(/^\//, '').split('/')[0]
-            return id ? `https://www.youtube.com/embed/${id}` : null
+            return id ? `${YOUTUBE_EMBED}${id}` : null
         }
 
         if (host === 'vimeo.com' || host === 'player.vimeo.com') {
             const idMatch = parsed.pathname.match(/(\d+)/)
-            return idMatch ? `https://player.vimeo.com/video/${idMatch[1]}` : null
+            return idMatch ? vimeoEmbed(idMatch[1]) : null
         }
     } catch {
         return null

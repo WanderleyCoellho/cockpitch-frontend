@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 /** Contato para assuntos de privacidade (LGPD). Trocar aqui quando houver um e-mail dedicado. */
 export const PRIVACY_CONTACT = 'lumendevstudios@gmail.com'
-const UPDATED_AT = '6 de outubro de 2026'
+const UPDATED_AT = '3 de novembro de 2026'
 
 function LegalLayout({ title, children }: { title: string; children: ReactNode }) {
     return (
@@ -33,58 +33,104 @@ function LegalLayout({ title, children }: { title: string; children: ReactNode }
     )
 }
 
+/** Itens guardados no navegador (seção de cookies). Manter em dia com o código. */
+const BROWSER_STORAGE: Array<{ name: string; where: string; purpose: string; duration: string }> = [
+    { name: 'auth_token', where: 'Armazenamento local', purpose: 'Manter você conectado ao painel.', duration: 'Até sair da conta (a sessão vale 7 dias)' },
+    { name: 'lumen_active_workspace', where: 'Armazenamento local', purpose: 'Lembrar qual empresa está selecionada.', duration: 'Até sair da conta' },
+    { name: 'lumen-deal:block-tips-hidden', where: 'Armazenamento local', purpose: 'Lembrar se você ocultou as dicas do editor.', duration: 'Até limpar os dados do navegador' },
+    { name: 'lumen_google_pending', where: 'Armazenamento da aba', purpose: 'Guardar o login com Google enquanto você termina o cadastro.', duration: 'Até fechar a aba' },
+    { name: 'ops_access_token', where: 'Cookie (HttpOnly)', purpose: 'Sessão do painel interno da equipe Lumen Dev Studios. Não é usado por clientes.', duration: '12 horas' },
+]
+
 export function PrivacyPage() {
     return (
         <LegalLayout title="Política de Privacidade">
             <section>
                 <p>
                     Esta política explica como o <strong>Lumen Deal</strong> (deal.lumendevstudios.com), produto da <strong>Lumen Dev Studios</strong>,
-                    trata dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018 — LGPD).
+                    trata dados pessoais, em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei 13.709/2018 — LGPD). Ela vale para quem
+                    usa o painel e para quem recebe e responde propostas enviadas pelo Lumen Deal.
                 </p>
-            </section>
-
-            <section>
-                <h2>1. Quem somos e papéis</h2>
                 <p>
-                    O Lumen Deal é uma plataforma para empresas e profissionais criarem e enviarem propostas comerciais. Para os dados de quem
-                    usa o painel (contas, equipes e assinaturas), a Lumen Dev Studios é a <strong>controladora</strong>. Para os dados dos clientes
-                    finais que recebem e respondem propostas, a empresa que enviou a proposta é a controladora e o Lumen Deal atua como
-                    <strong> operador</strong>, tratando esses dados apenas para prestar o serviço contratado por ela.
+                    <strong>Em resumo:</strong> usamos os dados só para prestar o serviço, não vendemos dados, não usamos cookies de publicidade nem
+                    rastreadores, e você pode pedir acesso, correção ou exclusão pelo e-mail{' '}
+                    <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a>.
                 </p>
             </section>
 
             <section>
-                <h2>2. Dados que coletamos</h2>
+                <h2>1. Quem somos, papéis e canal de contato</h2>
+                <p>
+                    O Lumen Deal é uma plataforma para empresas e profissionais criarem, enviarem e assinarem propostas comerciais. Para os dados de
+                    quem usa o painel (contas, equipes e assinaturas), a Lumen Dev Studios é a <strong>controladora</strong>. Para os dados dos
+                    clientes que recebem e respondem propostas, a empresa que enviou a proposta é a <strong>controladora</strong> e o Lumen Deal atua
+                    como <strong>operador</strong>, tratando esses dados apenas para prestar o serviço contratado por ela.
+                </p>
+                <p>
+                    Canal de comunicação com o titular e com a ANPD (encarregado):{' '}
+                    <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a>.
+                </p>
+            </section>
+
+            <section>
+                <h2>2. Dados que tratamos</h2>
                 <ul>
-                    <li><strong>Conta:</strong> nome, e-mail e senha (guardada apenas de forma criptografada, com hash).</li>
+                    <li><strong>Conta:</strong> nome, e-mail e senha (guardada apenas como hash, nunca em texto).</li>
                     <li>
-                        <strong>Entrar com Google:</strong> nome, e-mail e o identificador da conta Google, fornecidos pelo Google quando você
-                        escolhe essa opção. Não acessamos seu Gmail, contatos, Drive nem qualquer outro dado da conta Google.
+                        <strong>Entrar com Google:</strong> nome, e-mail e o identificador da conta Google, fornecidos pelo Google quando você escolhe
+                        essa opção. No primeiro acesso confirmamos o e-mail com um link e você cria uma senha. Não acessamos Gmail, contatos, Drive nem
+                        outros dados da conta Google.
                     </li>
                     <li><strong>Empresa e conteúdo:</strong> nome e segmento da empresa, perfil público, pacotes, preços, propostas, imagens e vídeos enviados.</li>
                     <li><strong>Equipe:</strong> e-mails convidados, papéis e preferências de aviso por e-mail.</li>
                     <li>
-                        <strong>Clientes que respondem propostas:</strong> nome, e-mail, CPF/CNPJ (quando a empresa exige), mensagem, pacote e opcionais
-                        escolhidos, data e hora, endereço IP e navegador, usados como comprovante do aceite.
+                        <strong>Assinatura da empresa:</strong> nome, cargo (opcional), CPF, assinatura desenhada ou digitada, e-mail confirmado por
+                        código, data, hora, IP e navegador. Se você permitir, a assinatura e o CPF ficam salvos no seu perfil para as próximas propostas;
+                        você pode apagá-los quando quiser.
                     </li>
-                    <li><strong>Uso:</strong> aberturas das propostas (data, hora e um identificador de sessão) para as estatísticas da empresa.</li>
                     <li>
-                        <strong>Pagamentos:</strong> processados pela Stripe. Não armazenamos números de cartão; guardamos apenas identificadores da
-                        assinatura e comprovantes que você enviar.
+                        <strong>Clientes que respondem propostas:</strong> nome, e-mail, mensagem, pacote e opcionais escolhidos, data, hora, endereço IP e
+                        navegador. Para <strong>aceitar e assinar</strong>, também CPF, assinatura desenhada ou digitada e a confirmação do e-mail por um
+                        código de 6 dígitos.
+                    </li>
+                    <li>
+                        <strong>Uso:</strong> aberturas das propostas (data, hora e um identificador de sessão gerado na página, que não fica salvo no
+                        navegador) para as estatísticas da empresa.
+                    </li>
+                    <li>
+                        <strong>Pagamentos:</strong> processados pela Stripe. Não recebemos nem guardamos números de cartão; guardamos identificadores do
+                        cliente e da assinatura na Stripe, o histórico de cobrança e comprovantes que você enviar.
                     </li>
                 </ul>
+                <p>
+                    <strong>O que fica visível na proposta:</strong> a proposta é acessível a quem tiver o link. Depois de assinada, ela mostra o nome,
+                    a assinatura e o CPF <strong>parcialmente oculto</strong> de quem assinou, e o código de verificação do conteúdo. E-mail, IP,
+                    navegador e o CPF completo ficam visíveis só para a equipe da empresa, no painel.
+                </p>
             </section>
 
             <section>
                 <h2>3. Para que usamos e base legal</h2>
                 <ul>
-                    <li>Criar e manter sua conta, autenticar o acesso e prestar o serviço (execução de contrato).</li>
-                    <li>Enviar avisos do próprio serviço: convites de equipe, aberturas e respostas de propostas e confirmações de aceite (execução de contrato).</li>
-                    <li>Registrar o aceite de propostas como comprovante para a empresa e o cliente (execução de contrato e exercício regular de direitos).</li>
-                    <li>Segurança, prevenção de fraude e abuso (legítimo interesse).</li>
-                    <li>Cobrança e obrigações fiscais (cumprimento de obrigação legal).</li>
+                    <li>Criar e manter sua conta, autenticar o acesso e prestar o serviço — <strong>execução de contrato</strong> (art. 7º, V).</li>
+                    <li>
+                        Enviar e-mails do próprio serviço: confirmação de conta, códigos de assinatura, convites de equipe, aberturas e respostas de
+                        propostas — <strong>execução de contrato</strong> (art. 7º, V).
+                    </li>
+                    <li>
+                        Registrar o aceite e as assinaturas como comprovante para a empresa e o cliente — <strong>execução de contrato</strong> e{' '}
+                        <strong>exercício regular de direitos</strong> (art. 7º, V e VI).
+                    </li>
+                    <li>
+                        Segurança, prevenção de fraude e abuso (limites de tentativas, registro de IP, alertas de contestação de pagamento) —{' '}
+                        <strong>legítimo interesse</strong> (art. 7º, IX).
+                    </li>
+                    <li>Cobrança, emissão de notas e obrigações fiscais — <strong>cumprimento de obrigação legal</strong> (art. 7º, II).</li>
                 </ul>
-                <p>Não vendemos dados pessoais e não usamos seus dados para publicidade de terceiros.</p>
+                <p>
+                    Não vendemos dados pessoais, não os usamos para publicidade de terceiros e não tomamos decisões automatizadas sobre você. A Stripe
+                    pode fazer análises automáticas de fraude nos pagamentos, conforme a política dela.
+                </p>
             </section>
 
             <section>
@@ -95,57 +141,109 @@ export function PrivacyPage() {
                     <li><strong>Vercel</strong> — hospedagem do site e do painel.</li>
                     <li><strong>Resend</strong> — envio de e-mails.</li>
                     <li><strong>Stripe</strong> — pagamentos e assinaturas.</li>
-                    <li><strong>Google</strong> — autenticação, quando você escolhe "Entrar com Google".</li>
+                    <li><strong>Google</strong> — autenticação, quando você escolhe "Entrar com Google", e as fontes tipográficas das páginas (o navegador as busca no Google, que recebe o endereço IP).</li>
+                    <li><strong>YouTube e Vimeo</strong> — somente quando a empresa coloca um vídeo desses serviços na proposta; usamos os modos sem cookies de rastreamento.</li>
                 </ul>
                 <p>
-                    Alguns desses fornecedores mantêm servidores fora do Brasil (principalmente nos Estados Unidos). Nesses casos a transferência
-                    internacional ocorre para a execução do contrato e com fornecedores que adotam padrões de segurança reconhecidos.
+                    Também podemos compartilhar dados quando a lei ou uma ordem de autoridade competente exigir. A empresa que envia a proposta acessa
+                    os dados de quem respondeu a ela.
                 </p>
             </section>
 
             <section>
-                <h2>5. Por quanto tempo guardamos</h2>
+                <h2>5. Transferência internacional</h2>
                 <p>
-                    Mantemos os dados enquanto a conta estiver ativa. Comprovantes de aceite e registros financeiros podem ser mantidos pelo prazo
-                    necessário para cumprir obrigações legais ou para a defesa de direitos. Após o encerramento da conta, os demais dados são
-                    excluídos ou anonimizados em até 90 dias.
+                    Os servidores do serviço e de vários fornecedores ficam fora do Brasil, principalmente nos Estados Unidos. A transferência ocorre
+                    nos termos do art. 33 da LGPD, para a execução do contrato e com fornecedores que adotam garantias e padrões de segurança
+                    reconhecidos.
                 </p>
             </section>
 
             <section>
-                <h2>6. Segurança</h2>
+                <h2>6. Por quanto tempo guardamos</h2>
+                <ul>
+                    <li>Dados da conta e conteúdo: enquanto a conta estiver ativa.</li>
+                    <li>
+                        Comprovantes de aceite e assinaturas: enquanto a proposta existir e, depois, pelo prazo necessário para cumprir obrigações legais
+                        ou para a defesa de direitos.
+                    </li>
+                    <li>Registros financeiros e fiscais: pelo prazo exigido pela legislação.</li>
+                    <li>Códigos de assinatura e links de confirmação de conta: valem 10 minutos e 24 horas, respectivamente, e depois deixam de funcionar.</li>
+                    <li>Registro de avisos de pagamento da Stripe: 90 dias.</li>
+                    <li>Após o encerramento da conta, os demais dados são excluídos ou anonimizados em até 90 dias.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>7. Segurança</h2>
                 <p>
-                    Usamos conexão criptografada (HTTPS), senhas com hash, arquivos privados com links temporários, controle de acesso por empresa e
-                    papel, e limites contra tentativas abusivas. Nenhum sistema é totalmente imune; se ocorrer um incidente relevante, avisaremos
-                    os afetados e a ANPD conforme a lei.
+                    Usamos conexão criptografada (HTTPS), senhas com hash, confirmação de e-mail por código ou link, arquivos privados com links
+                    temporários, controle de acesso por empresa e papel, e limites contra tentativas abusivas. Nenhum sistema é totalmente imune; se
+                    ocorrer um incidente que possa causar risco ou dano relevante, avisaremos os afetados e a ANPD, conforme o art. 48 da LGPD.
                 </p>
             </section>
 
             <section>
-                <h2>7. Seus direitos</h2>
+                <h2>8. Seus direitos</h2>
                 <p>
-                    Você pode pedir confirmação de tratamento, acesso, correção, anonimização, portabilidade, exclusão, informações sobre
-                    compartilhamento e revogação de consentimento, nos termos do art. 18 da LGPD. Se você é cliente de uma empresa que usa o
-                    Lumen Deal, faça o pedido diretamente a ela; nós a apoiaremos no atendimento. Respondemos em até 15 dias.
+                    Pelo art. 18 da LGPD, você pode pedir: confirmação de que tratamos seus dados, acesso, correção, anonimização, bloqueio ou
+                    eliminação de dados desnecessários, portabilidade, eliminação dos dados tratados com consentimento, informação sobre com quem
+                    compartilhamos, e revisão de decisões automatizadas. Também pode se opor a tratamentos baseados em legítimo interesse.
                 </p>
-            </section>
-
-            <section>
-                <h2>8. Cookies e armazenamento no navegador</h2>
                 <p>
-                    Não usamos cookies de publicidade nem rastreadores de terceiros. O painel guarda no seu navegador apenas o necessário para
-                    manter a sessão e lembrar a empresa selecionada. O botão "Entrar com Google" é fornecido pelo próprio Google, sujeito à
-                    política de privacidade do Google.
+                    Envie o pedido para <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a> a partir do e-mail da conta. Respondemos em até
+                    15 dias. Se você é cliente de uma empresa que usa o Lumen Deal, faça o pedido diretamente a ela; nós a apoiaremos no atendimento.
+                    Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
                 </p>
             </section>
 
             <section>
-                <h2>9. Crianças</h2>
+                <h2>9. Cookies e armazenamento no navegador</h2>
+                <p>
+                    O Lumen Deal <strong>não usa cookies de publicidade, de análise nem rastreadores</strong>. Guardamos no navegador apenas o necessário
+                    para o serviço funcionar, por isso não pedimos consentimento para eles:
+                </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="text-left text-white">
+                                <th className="py-2 pr-3 border-b border-white/10 font-semibold">Nome</th>
+                                <th className="py-2 pr-3 border-b border-white/10 font-semibold">Onde</th>
+                                <th className="py-2 pr-3 border-b border-white/10 font-semibold">Para quê</th>
+                                <th className="py-2 border-b border-white/10 font-semibold">Duração</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {BROWSER_STORAGE.map((item) => (
+                                <tr key={item.name} className="align-top">
+                                    <td className="py-2 pr-3 border-b border-white/5 font-mono text-xs text-white/70">{item.name}</td>
+                                    <td className="py-2 pr-3 border-b border-white/5">{item.where}</td>
+                                    <td className="py-2 pr-3 border-b border-white/5">{item.purpose}</td>
+                                    <td className="py-2 border-b border-white/5">{item.duration}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <p>Serviços de terceiros que você pode encontrar no Lumen Deal têm cookies próprios, regidos pelas políticas deles:</p>
+                <ul>
+                    <li><strong>Google</strong> — o botão "Entrar com Google" pode guardar cookies do Google quando você o usa.</li>
+                    <li><strong>Stripe</strong> — a página de pagamento (checkout.stripe.com) usa cookies para o pagamento e a prevenção de fraude.</li>
+                    <li><strong>YouTube e Vimeo</strong> — vídeos em propostas usam os modos sem rastreamento (youtube-nocookie e "do not track").</li>
+                </ul>
+                <p>
+                    Você pode apagar esses dados nas configurações do navegador; fazer isso encerra a sessão no painel. Se um dia usarmos cookies que
+                    não sejam necessários, pediremos seu consentimento antes.
+                </p>
+            </section>
+
+            <section>
+                <h2>10. Crianças</h2>
                 <p>O Lumen Deal é destinado a empresas e profissionais e não é direcionado a menores de 18 anos.</p>
             </section>
 
             <section>
-                <h2>10. Alterações e contato</h2>
+                <h2>11. Alterações e contato</h2>
                 <p>
                     Podemos atualizar esta política; a data no topo indica a última versão, e mudanças relevantes serão avisadas no painel ou por
                     e-mail. Dúvidas e pedidos sobre dados pessoais: <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a>.
@@ -188,11 +286,16 @@ export function TermsPage() {
                 </ul>
             </section>
             <section>
-                <h2>4. Aceite online</h2>
+                <h2>4. Aceite online e assinatura eletrônica</h2>
                 <p>
-                    O registro de aceite (nome, e-mail, data, hora, IP e o conteúdo exato da proposta) serve como comprovante entre você e seu
-                    cliente. Ele não substitui um contrato quando a lei ou o negócio exigirem forma específica, e não é uma assinatura com
-                    certificado digital ICP-Brasil.
+                    O aceite é assinado eletronicamente: registramos nome, CPF, assinatura desenhada ou digitada, e-mail confirmado por código, data,
+                    hora, IP, navegador e um código de verificação (SHA-256) do conteúdo exato da proposta. Esse registro serve como comprovante
+                    entre você e seu cliente. É uma assinatura eletrônica sem certificado digital ICP-Brasil e não substitui um contrato quando a lei
+                    ou o negócio exigirem forma específica.
+                </p>
+                <p>
+                    Você é a controladora dos dados dos seus clientes coletados pelas propostas e deve ter base legal para tratá-los. O Lumen Deal
+                    trata esses dados como operador, conforme a <Link to="/privacidade">Política de Privacidade</Link>.
                 </p>
             </section>
             <section>

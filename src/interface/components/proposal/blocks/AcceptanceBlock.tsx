@@ -428,9 +428,15 @@ export function AcceptanceBlockView({ block, ctx, alt }: { block: AcceptanceBloc
                             {ctx.preview && (
                                 <p className="pp-body text-xs text-center" style={{ color: 'var(--pp-muted)' }}>Pré-visualização: no link enviado, o cliente responde por aqui.</p>
                             )}
-                            {mode === 'ACCEPTED' && !ctx.preview && (
+                            {!ctx.preview && (
                                 <p className="pp-body text-[11px] text-center" style={{ color: 'var(--pp-muted)' }}>
-                                    Ao assinar, registramos seu CPF, o e-mail confirmado por código, data, hora e o conteúdo desta proposta como comprovante.
+                                    {mode === 'ACCEPTED'
+                                        ? 'Ao assinar, registramos seu nome, e-mail (confirmado por código), CPF, assinatura, data, hora, IP, navegador e o conteúdo desta proposta como comprovante para você e a empresa.'
+                                        : 'Registramos seu nome, e-mail, mensagem, data, hora, IP e navegador para a empresa receber sua resposta.'}{' '}
+                                    Os dados ficam com a empresa que enviou a proposta.{' '}
+                                    <a href="/privacidade" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--pp-accent)' }}>
+                                        Política de Privacidade
+                                    </a>
                                 </p>
                             )}
                         </motion.form>

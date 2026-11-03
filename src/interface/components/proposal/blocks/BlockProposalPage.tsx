@@ -153,13 +153,17 @@ export function BlockProposalPage({ blocks, ctx: initialCtx }: { blocks: Proposa
                 <BlockRenderer blocks={blocks} ctx={ctx} selection={selection} />
             </main>
 
-            {!ctx.removeBranding && (
-                <footer className="px-6 py-10 text-center" style={{ borderTop: '1px solid var(--pp-border)' }}>
+            {/* O link da política fica mesmo sem a marca Lumen Deal: quem responde a proposta informa dados pessoais. */}
+            <footer className="px-6 py-10 text-center space-x-3" style={{ borderTop: '1px solid var(--pp-border)' }}>
+                {!ctx.removeBranding && (
                     <a href="https://deal.lumendevstudios.com" target="_blank" rel="noreferrer" className="pp-body text-[11px] tracking-wide hover:opacity-80" style={{ color: 'var(--pp-muted)', opacity: 0.6 }}>
                         Proposta feita com Lumen Deal
                     </a>
-                </footer>
-            )}
+                )}
+                <a href="/privacidade" target="_blank" rel="noreferrer" className="pp-body text-[11px] tracking-wide hover:opacity-80" style={{ color: 'var(--pp-muted)', opacity: 0.6 }}>
+                    Privacidade
+                </a>
+            </footer>
 
             {floatingWa && scrolled && active !== contactBlock?.id && (
                 <motion.a

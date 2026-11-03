@@ -460,13 +460,16 @@ function ContactSection({ proposal, provider, tk }: { proposal: Proposal; provid
                     </div>
                 )}
 
-                {!proposal.branding?.removeBranding && (
-                    <div className="text-center pt-8 border-t" style={{ borderColor: 'var(--pp-border)' }}>
-                        <p className="pp-body text-xs" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
+                <div className="text-center pt-8 border-t space-x-3" style={{ borderColor: 'var(--pp-border)' }}>
+                    {!proposal.branding?.removeBranding && (
+                        <span className="pp-body text-xs" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
                             Proposta feita com Lumen Deal
-                        </p>
-                    </div>
-                )}
+                        </span>
+                    )}
+                    <a href="/privacidade" target="_blank" rel="noreferrer" className="pp-body text-xs hover:opacity-80" style={{ color: 'var(--pp-muted)', opacity: 0.4 }}>
+                        Privacidade
+                    </a>
+                </div>
             </div>
         </section>
     )
