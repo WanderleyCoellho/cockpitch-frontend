@@ -8,7 +8,7 @@ import { PackageSchema, PackageItemSchema, toPackagePayload, toPackageItemPayloa
 import { calculatePackagePricing, centsToInput, formatCents, formatQuantity, lineTotalCents, parseMoneyToCents } from '../../shared/pricing'
 import { parseDecimalInput } from '../../shared/schemas'
 import HelpTip, { FieldLabel } from './help/HelpTip'
-import type { PackageFormData, PackageItemFormData } from '../../shared/schemas'
+import type { PackageFormData, PackageFormInput, PackageItemFormData, PackageItemFormInput } from '../../shared/schemas'
 import type { Package, PackageItem } from '../../shared/types'
 import { VisualColorPicker } from './shared/VisualColorPicker'
 import { Switch } from './shared/Switch'
@@ -49,7 +49,7 @@ export default function PackageForm({ providerId, package: initialPackage, onClo
     const [uploadError, setUploadError] = useState<string | null>(null)
     const [mediaPreviewFailed, setMediaPreviewFailed] = useState(false)
 
-    const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<PackageFormData>({
+    const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm<PackageFormInput, unknown, PackageFormData>({
         resolver: zodResolver(PackageSchema),
         defaultValues: initialPackage
             ? {
@@ -549,7 +549,7 @@ interface PackageItemInlineFormProps {
 
 function PackageItemInlineForm({ packageId, item, onSaved, onCancel }: PackageItemInlineFormProps) {
     const [confirmDeleteItem, setConfirmDeleteItem] = useState(false)
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<PackageItemFormData>({
+    const { register, handleSubmit, reset, formState: { errors } } = useForm<PackageItemFormInput, unknown, PackageItemFormData>({
         resolver: zodResolver(PackageItemSchema),
         defaultValues: item
             ? {

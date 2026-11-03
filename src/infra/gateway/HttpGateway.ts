@@ -77,7 +77,9 @@ const FALLBACK_MESSAGES: Record<number, string> = {
 /** Extrator central de mensagem de erro da API (formato `{ message, code?, issues? }`). */
 export function extractErrorMessage(status: number, data: any): string {
     const issue = Array.isArray(data?.issues) ? data.issues[0] : null
-    if (issue?.message && issue.message !== 'Required') {
+    // Campo obrigatório ausente vira a mensagem genérica (zod 3: "Required"; zod 4: tipo inválido com "undefined").
+    const missingField = issue?.message === 'Required' || (issue?.code === 'invalid_type' && /undefined/.test(issue?.message ?? ''))
+    if (issue?.message && !missingField) {
         const field = Array.isArray(issue.path) && issue.path.length ? `${issue.path.join('.')}: ` : ''
         return `${field}${issue.message}`
     }

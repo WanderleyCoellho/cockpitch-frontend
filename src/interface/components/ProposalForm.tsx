@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, httpGateway } from '../../infra/gateway/HttpGateway'
-import { ProposalSchema, type ProposalFormData } from '../../shared/schemas'
+import { ProposalSchema, type ProposalFormData, type ProposalFormInput } from '../../shared/schemas'
 import type { Proposal, Package, Provider, ProposalMediaItem, ProposalSection, ProposalTemplate, ThemeCustom } from '../../shared/types'
 import ThemeSelector from './proposal/ThemeSelector'
 import SectionsEditor, { normalizeSections } from './proposal/SectionsEditor'
@@ -102,7 +102,7 @@ export default function ProposalForm({ proposal, providerId, onClose, onSuccess 
         formState: { errors, isSubmitting },
         setValue,
         watch,
-    } = useForm<ProposalFormData>({
+    } = useForm<ProposalFormInput, unknown, ProposalFormData>({
         resolver: zodResolver(ProposalSchema),
         defaultValues: proposal
             ? {
