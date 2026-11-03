@@ -455,6 +455,11 @@ class HttpGateway {
     }
 
     // ---------- Workspaces e equipe ----------
+    /** Conta sem empresa cria a sua (vira dona). Quem já participa de uma recebe 409. */
+    async createWorkspace(name: string, segment: string): Promise<{ workspaceId: string }> {
+        return this.request('POST', '/workspaces', { name, segment })
+    }
+
     async getCurrentWorkspace(): Promise<WorkspaceDetails> {
         const result = await this.request<{ workspace: WorkspaceDetails }>('GET', '/workspaces/current')
         return result.workspace
