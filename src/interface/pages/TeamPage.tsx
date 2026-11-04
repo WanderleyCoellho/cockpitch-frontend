@@ -7,6 +7,7 @@ import { usePlan } from '../context/PlanContext'
 import HelpTip, { FieldLabel } from '../components/help/HelpTip'
 import PlanSelector from '../components/PlanSelector'
 import NotificationPreferences from '../components/NotificationPreferences'
+import AccountDataSection from '../components/AccountDataSection'
 import GuidedTour, { type TourStep } from '../components/help/GuidedTour'
 
 const TOUR: TourStep[] = [
@@ -282,6 +283,7 @@ export default function TeamPage() {
             )}
 
             <div data-tour="team-notifications"><NotificationPreferences /></div>
+            <AccountDataSection />
             <GuidedTour id="team" steps={TOUR} />
 
             {showPlans && <PlanSelector onClose={() => setShowPlans(false)} />}

@@ -164,8 +164,9 @@ export function PrivacyPage() {
                 <ul>
                     <li>Dados da conta e conteúdo: enquanto a conta estiver ativa.</li>
                     <li>
-                        Comprovantes de aceite e assinaturas: enquanto a proposta existir e, depois, pelo prazo necessário para cumprir obrigações legais
-                        ou para a defesa de direitos.
+                        Comprovantes de aceite e assinaturas: enquanto a proposta existir. Se a empresa for encerrada porque o dono excluiu a conta, ficam
+                        só as propostas aceitas pelo cliente (proposta, aceite e assinaturas), por 5 anos, para a defesa de direitos das duas partes; o
+                        restante da empresa é apagado na hora.
                     </li>
                     <li>Registros financeiros e fiscais: pelo prazo exigido pela legislação.</li>
                     <li>
@@ -177,7 +178,10 @@ export function PrivacyPage() {
                         destinatário e conteúdo são apagados em 90 dias.
                     </li>
                     <li>Registro de avisos de pagamento da Stripe: 90 dias.</li>
-                    <li>Após o encerramento da conta, os demais dados são excluídos ou anonimizados em até 90 dias.</li>
+                    <li>
+                        Ao excluir a conta, os dados dela são apagados na hora. Ficam apenas as assinaturas que você fez em propostas (como prova do que foi
+                        assinado) e os registros financeiros exigidos por lei.
+                    </li>
                 </ul>
             </section>
 
@@ -198,7 +202,12 @@ export function PrivacyPage() {
                     compartilhamos, e revisão de decisões automatizadas. Também pode se opor a tratamentos baseados em legítimo interesse.
                 </p>
                 <p>
-                    Envie o pedido para <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a> a partir do e-mail da conta. Respondemos em até
+                    No próprio painel, em <strong>Equipe → Sua conta e seus dados</strong>, você baixa seus dados (acesso e portabilidade, em arquivo
+                    JSON) e exclui sua conta. Se você é dono de uma empresa com equipe, escolhe na hora se passa a empresa para outra pessoa ou a
+                    encerra.
+                </p>
+                <p>
+                    Para os demais pedidos, escreva para <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a> a partir do e-mail da conta. Respondemos em até
                     15 dias. Se você é cliente de uma empresa que usa o Lumen Deal, faça o pedido diretamente a ela; nós a apoiaremos no atendimento.
                     Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
                 </p>
@@ -300,20 +309,39 @@ export function TermsPage() {
                     entre você e seu cliente. É uma assinatura eletrônica sem certificado digital ICP-Brasil e não substitui um contrato quando a lei
                     ou o negócio exigirem forma específica.
                 </p>
-                <p>
-                    Você é a controladora dos dados dos seus clientes coletados pelas propostas e deve ter base legal para tratá-los. O Lumen Deal
-                    trata esses dados como operador, conforme a <Link to="/privacidade">Política de Privacidade</Link>.
-                </p>
             </section>
             <section>
-                <h2>5. Planos e pagamentos</h2>
+                <h2>5. Dados dos seus clientes (LGPD)</h2>
+                <p>
+                    Nos dados pessoais dos seus clientes coletados pelas propostas, sua empresa é a <strong>controladora</strong> e o Lumen Deal é o{' '}
+                    <strong>operador</strong> (LGPD, arts. 5º, 37 a 40). Ao usar o serviço, as partes combinam:
+                </p>
+                <ul>
+                    <li>Você define para que os dados são usados e precisa ter base legal para coletá-los e tratá-los.</li>
+                    <li>Nós tratamos esses dados só para prestar o serviço e seguindo suas instruções, nunca para fins próprios.</li>
+                    <li>Quem acessa esses dados do nosso lado tem dever de sigilo.</li>
+                    <li>
+                        Usamos os fornecedores listados na <Link to="/privacidade">Política de Privacidade</Link> e avisamos antes de incluir outros que
+                        recebam esses dados.
+                    </li>
+                    <li>Mantemos as medidas de segurança descritas na política.</li>
+                    <li>Se houver um incidente com esses dados, avisamos você sem demora, com o que soubermos, para que você avalie o aviso à ANPD e aos titulares.</li>
+                    <li>Ajudamos você a atender pedidos dos seus clientes (acesso, correção, exclusão).</li>
+                    <li>
+                        Quando a empresa é encerrada, apagamos esses dados, menos as propostas aceitas, guardadas por 5 anos como comprovante para as
+                        duas partes. Esse prazo também está na Política de Privacidade.
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h2>6. Planos e pagamentos</h2>
                 <p>
                     Planos pagos são cobrados de forma recorrente pela Stripe. Você pode cancelar a qualquer momento; o acesso pago segue até o fim
                     do período já cobrado. Preços podem mudar com aviso prévio de 30 dias.
                 </p>
             </section>
             <section>
-                <h2>6. Disponibilidade e responsabilidade</h2>
+                <h2>7. Disponibilidade e responsabilidade</h2>
                 <p>
                     Trabalhamos para manter o serviço disponível e seguro, mas ele é oferecido "no estado em que se encontra". Não respondemos por
                     negócios fechados ou não fechados com seus clientes, nem por danos indiretos. Nossa responsabilidade total fica limitada ao
@@ -321,14 +349,23 @@ export function TermsPage() {
                 </p>
             </section>
             <section>
-                <h2>7. Encerramento</h2>
+                <h2>8. Encerramento</h2>
                 <p>
-                    Você pode encerrar a conta quando quiser. Podemos suspender contas que violem estes termos. Após o encerramento, os dados seguem
-                    o prazo descrito na Política de Privacidade.
+                    Você pode excluir sua conta quando quiser, pelo painel. Se for dono de uma empresa com equipe, escolhe entre passar a empresa
+                    para outra pessoa da equipe ou encerrá-la:
                 </p>
+                <ul>
+                    <li>
+                        Passando para outra pessoa, a assinatura continua e sua forma de pagamento é removida. O novo dono usa o período já pago e tem até
+                        7 dias depois dele para cadastrar a forma de pagamento; se a cobrança já estiver atrasada, os 7 dias contam da troca. Sem pagamento
+                        em dia no fim do prazo, a assinatura é cancelada e a empresa passa para o plano Grátis.
+                    </li>
+                    <li>Encerrando a empresa, a assinatura é cancelada na hora e a equipe perde o acesso. Cada pessoa pode criar uma empresa nova no plano Grátis.</li>
+                </ul>
+                <p>Podemos suspender contas que violem estes termos. Depois do encerramento, os dados seguem os prazos da Política de Privacidade.</p>
             </section>
             <section>
-                <h2>8. Lei e contato</h2>
+                <h2>9. Lei e contato</h2>
                 <p>
                     Aplicam-se as leis do Brasil. Dúvidas: <a href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</a>.
                 </p>
