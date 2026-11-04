@@ -36,4 +36,4 @@ O plano exibido vem sempre do servidor (`/api/auth/me`).
 
 ## Especificações
 
-Roadmap e decisões de arquitetura ficam no repositório `cockpitch-backend`, em `specs/`.
+Roadmap e decisões de arquitetura ficam na pasta do projeto, fora dos repositórios: `specs/` (contexto `_context.md`, roteiro `EXECUTAR-TODAS.md` e specs em andamento) e `specs_concluidas/` (specs implementadas).

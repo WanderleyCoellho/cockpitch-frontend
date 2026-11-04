@@ -2,7 +2,7 @@ import { BLOCK_META, createBlock, type BlockType, type ProposalBlock } from './b
 
 /**
  * Dicas de ordem dos blocos no editor. São sugestões, nunca bloqueiam: o usuário decide.
- * Base (dados de mercado, ver specs/proposal-templates.md no backend):
+ * Base (dados de mercado, ver specs_concluidas/proposal-templates.md na pasta do projeto):
  * - o início é a parte mais lida (34–38% do tempo de leitura) → abrir pelo momento do cliente;
  * - valor antes do preço; o preço fica com ~27% da leitura;
  * - mídia e provas sociais aumentam o fechamento (até +32%);
