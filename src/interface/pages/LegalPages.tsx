@@ -168,7 +168,14 @@ export function PrivacyPage() {
                         ou para a defesa de direitos.
                     </li>
                     <li>Registros financeiros e fiscais: pelo prazo exigido pela legislação.</li>
-                    <li>Códigos de assinatura e links de confirmação de conta: valem 10 minutos e 24 horas, respectivamente, e depois deixam de funcionar.</li>
+                    <li>
+                        Códigos de assinatura: valem 10 minutos e o registro do pedido é apagado em 2 dias. Links de confirmação de conta: valem 24 horas
+                        e são apagados 7 dias depois de vencer. Convites de equipe não aceitos: apagados 30 dias depois de vencer.
+                    </li>
+                    <li>
+                        E-mails enviados pelo sistema: os que levam código ou link de acesso são apagados assim que o código ou link vence; nos demais,
+                        destinatário e conteúdo são apagados em 90 dias.
+                    </li>
                     <li>Registro de avisos de pagamento da Stripe: 90 dias.</li>
                     <li>Após o encerramento da conta, os demais dados são excluídos ou anonimizados em até 90 dias.</li>
                 </ul>
