@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 /** Contato para assuntos de privacidade (LGPD). Trocar aqui quando houver um e-mail dedicado. */
-export const PRIVACY_CONTACT = 'lumendevstudios@gmail.com'
+export const PRIVACY_CONTACT = 'contato@lumendevstudios.com'
 const UPDATED_AT = '3 de novembro de 2026'
 
 function LegalLayout({ title, children }: { title: string; children: ReactNode }) {
