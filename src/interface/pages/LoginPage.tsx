@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,6 +19,8 @@ export default function LoginPage() {
     const { login, loginWithGoogle, loading, error: authError } = useAuth()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [googleError, setGoogleError] = useState<string | null>(null)
+    // Aviso de quem acabou de sair (ex.: conta excluída).
+    const notice = (useLocation().state as { notice?: string } | null)?.notice
 
     const onGoogle = async (credential: string) => {
         setGoogleError(null)
@@ -98,6 +100,12 @@ export default function LoginPage() {
                         </h1>
                         <p className="text-sm text-white/45 mt-2">Acesse sua operação comercial e continue de onde parou.</p>
                     </div>
+
+                    {notice && (
+                        <div role="status" className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-200 text-sm w-full">
+                            {notice}
+                        </div>
+                    )}
 
                     {authError && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm inline-flex items-center gap-2 w-full">

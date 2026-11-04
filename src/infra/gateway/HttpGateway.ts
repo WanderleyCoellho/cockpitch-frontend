@@ -87,6 +87,22 @@ export function extractErrorMessage(status: number, data: any): string {
     return FALLBACK_MESSAGES[status] ?? 'Algo deu errado. Tente novamente em instantes.'
 }
 
+export type AccountDeletionInfo = {
+    owned: Array<{
+        id: string
+        name: string
+        planTier: string
+        billingStatus: string
+        hasSubscription: boolean
+        members: Array<{ userId: string; name: string; email: string; role: WorkspaceRoleName }>
+    }>
+    memberOf: Array<{ id: string; name: string; role: WorkspaceRoleName }>
+}
+
+type WorkspaceRoleName = 'OWNER' | 'ADMIN' | 'MEMBER'
+
+export type AccountDeletionDecision = { workspaceId: string; action: 'TRANSFER'; newOwnerUserId: string } | { workspaceId: string; action: 'CLOSE' }
+
 class HttpGateway {
     private token: string | null = null
     private workspaceId: string | null = null
@@ -375,6 +391,24 @@ class HttpGateway {
 
     async getMySignature() {
         return this.request<SavedSignatureProfile>('GET', '/me/signature')
+    }
+
+    /** Baixar meus dados (LGPD): JSON com os dados pessoais da conta. */
+    async exportMyData() {
+        return this.request<Record<string, unknown>>('GET', '/me/export')
+    }
+
+    /** O que precisa ser decidido antes de excluir a conta. */
+    async getAccountDeletion() {
+        return this.request<AccountDeletionInfo>('GET', '/me/deletion')
+    }
+
+    async requestAccountDeletionCode() {
+        return this.request<{ sentTo: string; expiresAt: string }>('POST', '/me/deletion/code')
+    }
+
+    async deleteAccount(body: { code: string; confirm: 'EXCLUIR'; workspaces: AccountDeletionDecision[] }) {
+        return this.request<void>('DELETE', '/me', body)
     }
 
     async listProposalResponses(proposalId: string): Promise<ProposalResponse[]> {
